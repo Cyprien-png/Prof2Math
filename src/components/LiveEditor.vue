@@ -160,7 +160,7 @@ const handleKeydown = (e: KeyboardEvent, index: number) => {
                 @mouseleave="activeMenuBlockId = null">
                 <!-- Block Name Label -->
                 <div v-if="block.name"
-                    class="absolute -top-3 left-2 px-2 py-0.5 text-xs font-mono text-gray-500 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded select-none z-10">
+                    class="absolute -top-3 left-0 px-2 py-0.5 text-xs font-mono text-gray-500 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded select-none z-10">
                     {{ block.name }}
                 </div>
 
