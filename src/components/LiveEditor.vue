@@ -1,28 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
-import MarkdownIt from 'markdown-it';
-import texmath from 'markdown-it-texmath';
-import katex from 'katex';
-import DOMPurify from 'dompurify';
-import 'katex/dist/katex.min.css';
 import type { Block, FileTreeNode } from '../types';
 import EditorBlock from './editor/EditorBlock.vue';
 import TopBar from './TopBar.vue';
 import SideMenu from './SideMenu.vue';
 import SettingsDialog from './SettingsDialog.vue';
+import { fileService } from '../services/FileService';
+import { blockService } from '../services/BlockService';
 
 // --- Props ---
 const props = defineProps<{
     initialContent?: string;
 }>();
-
-// --- Markdown Setup ---
-const md = new MarkdownIt();
-md.use(texmath, {
-    engine: katex,
-    delimiters: 'dollars',
-    katexOptions: { macros: { "\\RR": "\\mathbb{R}" } }
-});
 
 // --- State ---
 const blocks = ref<Block[]>([]);
@@ -37,78 +26,15 @@ const showSettings = ref(false);
 // File State
 const fileName = ref('untitled');
 const isDirty = ref(false);
-const currentFileHandle = ref<any>(null);
+const currentFileHandle = ref<FileSystemFileHandle | null>(null);
 const savedContent = ref('');
-
-// Navigate / Undo / Redo logic...
 
 // Initialize content
 const rawContent = ref(props.initialContent || '<!-- block -->\n# New file\n\nHello world!');
 
 // --- Logic ---
-const parseBlocks = (content: string) => {
-    // Regex to split by delimiters, capturing optional name
-    // Matches: <!-- block --> OR <!-- block: Name -->
-    const regex = /\n*<!--\s*block(?::\s*(.*?))?\s*-->\n*/g;
-    const rawParts = content.split(regex);
-
-    // rawParts will be: [text0, name1, text1, name2, text2, ...]
-
-    const newBlocks: Block[] = [];
-
-    let startIndex = 0;
-
-    // If the file starts with a delimiter, text0 (rawParts[0]) will be empty (or whitespace).
-    // In our new format, we expect files to start with a delimiter.
-    // If it DOESN'T (legacy file), we treat text0 as the first block (Untitled).
-
-    if (rawParts.length > 0) {
-        const firstChunk = rawParts[0];
-        if (firstChunk && firstChunk.trim().length > 0) {
-            // Legacy format: content before first delimiter
-            newBlocks.push({
-                id: `block-legacy-${Date.now()}`,
-                markdown: firstChunk,
-                html: DOMPurify.sanitize(md.render(firstChunk)),
-                isEditing: false,
-                name: undefined
-            });
-        }
-        // If empty, we skip it (it's the empty space before the first delimiter)
-        startIndex = 1;
-    }
-
-    // Iterate the rest in pairs [name, content]
-    // If we started with a delimiter, rawParts[1] is Name of first block, rawParts[2] is Content.
-    for (let i = startIndex; i < rawParts.length; i += 2) {
-        const name = rawParts[i];
-        // Ensure we don't go out of bounds
-        if (i + 1 >= rawParts.length) break;
-
-        const markdown = rawParts[i + 1] || '';
-
-        newBlocks.push({
-            id: `block-${(i + 1) / 2}-${Date.now()}`,
-            markdown: markdown,
-            html: DOMPurify.sanitize(md.render(markdown)),
-            isEditing: false,
-            name: name ? name.trim() : undefined
-        });
-    }
-
-    return newBlocks;
-};
-
-const serializeContent = () => {
-    // Always map each block to "Delimiter + Content"
-    return blocks.value.map(b => {
-        const namePart = b.name ? `: ${b.name}` : '';
-        return `<!-- block${namePart} -->\n${b.markdown}`;
-    }).join('\n\n');
-};
-
 const checkDirty = () => {
-    isDirty.value = serializeContent() !== savedContent.value;
+    isDirty.value = blockService.serializeBlocks(blocks.value) !== savedContent.value;
 };
 
 // --- History Logic ---
@@ -130,8 +56,7 @@ const pushHistory = () => {
         history.value.shift();
         historyIndex.value--;
     }
-    console.log(`History Pushed: Index ${historyIndex.value}, Length ${history.value.length}`);
-    // watcher handles dirty check
+    // console.log(`History Pushed: Index ${historyIndex.value}, Length ${history.value.length}`);
 };
 
 const undo = () => {
@@ -143,8 +68,7 @@ const undo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
-        console.log(`Undo: Index ${historyIndex.value}`);
-        // watcher handles dirty check
+        // console.log(`Undo: Index ${historyIndex.value}`);
     }
 };
 
@@ -157,19 +81,18 @@ const redo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
-        console.log(`Redo: Index ${historyIndex.value}`);
-        // watcher handles dirty check
+        // console.log(`Redo: Index ${historyIndex.value}`);
     }
 };
 
 
 // Initial parse
-blocks.value = parseBlocks(rawContent.value);
+blocks.value = blockService.parseBlocks(rawContent.value);
 pushHistory();
 
 // Initialize saved content
-savedContent.value = serializeContent();
-checkDirty(); // Should be false initially
+savedContent.value = blockService.serializeBlocks(blocks.value);
+checkDirty();
 
 // Watch blocks deeply to check dirty status
 watch(blocks, () => {
@@ -179,99 +102,41 @@ watch(blocks, () => {
 // --- Actions ---
 
 const handleSaveFile = async () => {
-    const content = serializeContent();
-    const fullFileName = `${fileName.value}.mthd`;
+    const content = blockService.serializeBlocks(blocks.value);
 
     try {
-        // @ts-ignore - File System Access API types might be missing
-        if (window.showSaveFilePicker) {
-            let handle = currentFileHandle.value;
-
-            if (!handle) {
-                // @ts-ignore
-                handle = await window.showSaveFilePicker({
-                    suggestedName: fullFileName,
-                    types: [{
-                        description: 'MathDown File',
-                        accept: { 'text/markdown': ['.mthd'] },
-                    }],
-                });
-                currentFileHandle.value = handle;
-                // Update filename from handle
-                if (handle.name) {
-                    fileName.value = handle.name.replace('.mthd', '');
-                }
-            }
-
-            // @ts-ignore
-            const writable = await handle.createWritable();
-            await writable.write(content);
-            await writable.close();
-
+        if (currentFileHandle.value) {
+            await fileService.saveFile(currentFileHandle.value, content);
+            savedContent.value = content;
+            checkDirty();
+            console.log(`Saved to ${fileName.value}.mthd`);
         } else {
-            // Fallback: Download
-            const blob = new Blob([content], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fullFileName;
-            a.click();
-            URL.revokeObjectURL(url);
+            const result = await fileService.saveFileAs(content, fileName.value);
+            if (result) {
+                currentFileHandle.value = result.handle;
+                fileName.value = result.name;
+                savedContent.value = content;
+                checkDirty();
+            }
         }
-
-        savedContent.value = serializeContent();
-        checkDirty();
-        console.log(`Saved to ${fileName.value}.mthd`);
-    } catch (err: any) {
-        if (err.name !== 'AbortError') {
-            console.error('Failed to save file:', err);
-            alert('Failed to save file');
-        }
+    } catch (err) {
+        console.error('Save failed', err);
     }
 };
 
 const handleOpenFile = async () => {
-    try {
-        // @ts-ignore
-        if (window.showOpenFilePicker) {
-            // @ts-ignore
-            const [handle] = await window.showOpenFilePicker({
-                types: [{
-                    description: 'MathDown File',
-                    accept: { 'text/markdown': ['.mthd'] },
-                }],
-                multiple: false
-            });
+    const result = await fileService.openFile();
+    if (result) {
+        currentFileHandle.value = result.handle;
+        fileName.value = result.name;
+        blocks.value = blockService.parseBlocks(result.content);
 
-            // @ts-ignore
-            const file = await handle.getFile();
-            const content = await file.text();
-
-            // Reset state
-            currentFileHandle.value = handle;
-            fileName.value = handle.name.replace(/\.mthd$/, '');
-
-            // Parse content
-            blocks.value = parseBlocks(content);
-
-            // Reset History
-            history.value = [];
-            historyIndex.value = -1;
-            pushHistory(); // Push initial state
-
-            // Reset Dirty
-            savedContent.value = serializeContent(); // Should match exactly
-            checkDirty();
-
-            console.log(`Opened file: ${fileName.value}`);
-        } else {
-            alert('Your browser does not support opening files directly.');
-        }
-    } catch (err: any) {
-        if (err.name !== 'AbortError') {
-            console.error('Failed to open file:', err);
-            alert('Failed to open file');
-        }
+        // Reset History & State
+        history.value = [];
+        historyIndex.value = -1;
+        pushHistory();
+        savedContent.value = result.content; // Use raw content as saved base
+        checkDirty();
     }
 };
 
@@ -279,15 +144,11 @@ const editBlock = (index: number) => {
     blocks.value.forEach((b, i) => {
         b.isEditing = i === index;
     });
-    // Focus logic is handled by EditorBlock watching isEditing
 };
 
 const saveBlock = (index: number) => {
     const block = blocks.value[index];
     if (!block) return;
-
-    // const oldMarkdown = block.markdown; 
-
 
     // Auto-remove if empty
     if (!block.markdown.trim()) {
@@ -303,13 +164,9 @@ const saveBlock = (index: number) => {
         block.markdown = newMarkdown;
     }
 
-    block.html = DOMPurify.sanitize(md.render(block.markdown), {
-        ADD_TAGS: ["math", "annotation", "semantics", "mtext", "mn", "mo", "mi", "mspace", "mover", "mstyle", "msub", "msup", "msubsup", "mfrac", "msqrt", "mroot", "mtable", "mtr", "mtd", "merror", "mpadded", "mphantom", "mglyph", "maligngroup", "malignmark", "menclose", "mfenced", "mscarry", "mscarry", "msgroup", "msline", "msrow", "mstack", "mlongdiv"],
-        ADD_ATTR: ['encoding', 'display']
-    });
+    block.html = blockService.renderHtml(block.markdown);
     block.isEditing = false;
 
-    // Only push history if it was editing? usage of saveBlock implies it was
     pushHistory();
 };
 
@@ -317,14 +174,7 @@ const duplicateBlock = (index: number) => {
     const original = blocks.value[index];
     if (!original) return;
 
-    const newBlock: Block = {
-        ...original,
-        id: `block-${Date.now()}-dup`,
-        isEditing: false,
-        name: original.name ? `${original.name} (Copy)` : undefined,
-        markdown: original.markdown,
-        html: original.html
-    };
+    const newBlock = blockService.duplicateBlock(original);
     blocks.value.splice(index + 1, 0, newBlock);
     activeMenuBlockId.value = null;
     pushHistory();
@@ -394,8 +244,12 @@ onUnmounted(() => {
 
 // Add Block Helper
 const addNextBlock = () => {
-    blocks.value.push({ id: `new-${Date.now()}`, markdown: '', html: '', isEditing: true });
-    // EditorBlock will auto-focus when it renders with isEditing=true
+    blocks.value.push(blockService.createBlock('', undefined, false));
+    // Set isEditing manually because createBlock defaults to false, but for new block we usually want it true?
+    // Let's update createBlock or just set it here.
+    const lastBlock = blocks.value[blocks.value.length - 1];
+    lastBlock.isEditing = true;
+
     pushHistory();
 }
 
@@ -403,45 +257,9 @@ const addNextBlock = () => {
 const rootDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
 const fileTree = ref<FileTreeNode[]>([]);
 
-const scanDirectory = async (dirHandle: FileSystemDirectoryHandle): Promise<FileTreeNode[]> => {
-    const nodes: FileTreeNode[] = [];
-    // @ts-ignore
-    for await (const entry of dirHandle.values()) {
-        if (entry.kind === 'file') {
-            if (entry.name.endsWith('.mthd')) {
-                nodes.push({
-                    name: entry.name,
-                    kind: 'file',
-                    handle: entry,
-                });
-            }
-        } else if (entry.kind === 'directory') {
-            // Recursively scan? 
-            // For now, let's just add the folder node. We can load children lazily or eagerly.
-            // Eager loading for simplicity as requested "recursively"
-            const children = await scanDirectory(entry);
-            // Only add directory if it has content (optional, but cleaner) or always add?
-            // User asked to show them.
-            nodes.push({
-                name: entry.name,
-                kind: 'directory',
-                handle: entry,
-                children: children,
-                isOpen: false // Default closed
-            });
-        }
-    }
-    // Sort: directories first, then files
-    return nodes.sort((a, b) => {
-        if (a.kind === b.kind) return a.name.localeCompare(b.name);
-        return a.kind === 'directory' ? -1 : 1;
-    });
-};
-
 const handleSetRootDirectory = async (handle: FileSystemDirectoryHandle) => {
     rootDirectoryHandle.value = handle;
-    fileTree.value = await scanDirectory(handle);
-    console.log('File tree loaded:', fileTree.value);
+    fileTree.value = await fileService.readDirectory(handle);
 };
 
 const handleToggleFolder = (node: FileTreeNode) => {
@@ -450,13 +268,11 @@ const handleToggleFolder = (node: FileTreeNode) => {
 
 const handleOpenFileFromTree = async (handle: FileSystemFileHandle) => {
     try {
-        const file = await handle.getFile();
-        const content = await file.text();
+        const content = await fileService.readFile(handle);
 
-        // Load file logic similar to handleOpenFile
         currentFileHandle.value = handle;
         fileName.value = handle.name.replace(/\.mthd$/, '');
-        blocks.value = parseBlocks(content);
+        blocks.value = blockService.parseBlocks(content);
 
         // Reset History
         history.value = [];
@@ -464,7 +280,7 @@ const handleOpenFileFromTree = async (handle: FileSystemFileHandle) => {
         pushHistory();
 
         // Reset Dirty
-        savedContent.value = serializeContent();
+        savedContent.value = content;
         checkDirty();
 
         console.log(`Opened file from tree: ${fileName.value}`);
@@ -478,6 +294,8 @@ const handleOpenFileFromTree = async (handle: FileSystemFileHandle) => {
 const toggleMenu = (id: string | null) => {
     activeMenuBlockId.value = id;
 }
+
+</script>
 
 </script>
 
