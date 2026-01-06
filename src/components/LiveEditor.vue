@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import MarkdownIt from 'markdown-it';
-import mkKatex from 'markdown-it-katex';
+import texmath from 'markdown-it-texmath';
+import katex from 'katex';
 import DOMPurify from 'dompurify';
 import 'katex/dist/katex.min.css';
 import type { Block } from '../types';
@@ -16,13 +17,12 @@ const props = defineProps<{
 }>();
 
 // --- Markdown Setup ---
-const md = new MarkdownIt({
-    html: true,
-    linkify: true,
-    typographer: true,
-    breaks: true,
+const md = new MarkdownIt();
+md.use(texmath, {
+    engine: katex,
+    delimiters: 'dollars',
+    katexOptions: { macros: { "\\RR": "\\mathbb{R}" } }
 });
-md.use(mkKatex);
 
 // --- State ---
 const blocks = ref<Block[]>([]);
@@ -302,7 +302,10 @@ const saveBlock = (index: number) => {
         block.markdown = newMarkdown;
     }
 
-    block.html = DOMPurify.sanitize(md.render(block.markdown));
+    block.html = DOMPurify.sanitize(md.render(block.markdown), {
+        ADD_TAGS: ["math", "annotation", "semantics", "mtext", "mn", "mo", "mi", "mspace", "mover", "mstyle", "msub", "msup", "msubsup", "mfrac", "msqrt", "mroot", "mtable", "mtr", "mtd", "merror", "mpadded", "mphantom", "mglyph", "maligngroup", "malignmark", "menclose", "mfenced", "mscarry", "mscarry", "msgroup", "msline", "msrow", "mstack", "mlongdiv"],
+        ADD_ATTR: ['encoding', 'display']
+    });
     block.isEditing = false;
 
     // Only push history if it was editing? usage of saveBlock implies it was
@@ -435,3 +438,21 @@ const toggleMenu = (id: string | null) => {
         <SettingsDialog :is-open="showSettings" @close="showSettings = false" />
     </div>
 </template>
+
+<style>
+/* Import direct via CSS pour s'assurer qu'il est chargé par le navigateur */
+@import 'katex/dist/katex.min.css';
+
+/* Correction pour les conflits potentiels avec Tailwind ou les styles de base */
+.katex-display {
+    margin: 1em 0 !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.katex {
+    font-size: 1.1em;
+    /* Ajustez selon vos besoins */
+    text-rendering: auto;
+}
+</style>

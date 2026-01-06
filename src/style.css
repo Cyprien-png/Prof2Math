@@ -1,36 +1,3 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-html.dark {
-  color-scheme: dark;
-}
-
-/* Fix KaTeX alignment in content */
-/* Fix KaTeX alignment and rendering */
-.prose .katex {
-  font-size: 1.1em;
-  text-rendering: auto;
-}
-
-.prose .katex,
-.prose .katex * {
-  line-height: 1.15;
-  /* Close to default KaTeX requirement */
-  border-color: currentColor;
-  /* Ensure fraction lines match text color */
-}
-
-/* Fix inline math vertical alignment */
-.prose .katex-html {
-  overflow: visible;
-}
-
-/* Ensure display math has space and proper scrolling */
-.prose .katex-display {
-  margin: 1em 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0.5em 0;
-  /* Avoid clipping text ascenders/descenders */
-}
