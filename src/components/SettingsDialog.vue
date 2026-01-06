@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 
 const props = defineProps<{
     isOpen: boolean;
+    currentDirectory?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -12,14 +13,14 @@ const emit = defineEmits<{
 
 const isDark = ref(false);
 const activeTab = ref<'general' | 'files'>('general');
-const currentDirectoryName = ref<string | null>(null);
+// const currentDirectoryName = ref<string | null>(null); // Use prop instead
 
 const handleSelectDirectory = async () => {
     try {
         // @ts-ignore
         const handle = await window.showDirectoryPicker();
         if (handle) {
-            currentDirectoryName.value = handle.name;
+            // currentDirectoryName.value = handle.name;
             emit('set-root-directory', handle);
         }
     } catch (err: any) {
@@ -128,9 +129,9 @@ onMounted(() => {
                             Select Working Directory
                         </button>
 
-                        <p v-if="currentDirectoryName" class="text-sm text-green-600 dark:text-green-400">
+                        <p v-if="currentDirectory" class="text-sm text-green-600 dark:text-green-400">
                             Current: <span class="font-mono bg-neutral-100 dark:bg-neutral-900 px-1 rounded">{{
-                                currentDirectoryName }}</span>
+                                currentDirectory }}</span>
                         </p>
                     </div>
 

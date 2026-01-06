@@ -8,12 +8,14 @@ const isCollapsed = ref(true);
 
 defineProps<{
     fileTree: FileTreeNode[];
+    isRestoring?: boolean;
 }>();
 
 const emit = defineEmits<{
     (e: 'open-settings'): void;
     (e: 'open-file', handle: FileSystemFileHandle): void;
     (e: 'toggle-folder', node: FileTreeNode): void;
+    (e: 'restore-access'): void;
 }>();
 </script>
 
@@ -41,8 +43,18 @@ const emit = defineEmits<{
 
         <!-- Menu Items -->
         <div class="flex-1 py-4 flex flex-col gap-1 px-2 overflow-y-auto">
-            <FileTree v-for="node in fileTree" :key="node.name" :node="node" @open-file="emit('open-file', $event)"
-                @toggle-folder="emit('toggle-folder', $event)" />
+            <div v-if="isRestoring" class="p-4 flex flex-col items-center justify-center text-center space-y-3">
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">
+                    Access to your recent workspace needs to be restored.
+                </p>
+                <button @click="emit('restore-access')"
+                    class="px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors w-full">
+                    Restore Access
+                </button>
+            </div>
+
+            <FileTree v-else v-for="node in fileTree" :key="node.name" :node="node"
+                @open-file="emit('open-file', $event)" @toggle-folder="emit('toggle-folder', $event)" />
         </div>
 
         <!-- Bottom Actions -->

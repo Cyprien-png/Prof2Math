@@ -254,11 +254,42 @@ const addNextBlock = () => {
 // --- File System Logic ---
 const rootDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
 const fileTree = ref<FileTreeNode[]>([]);
+const isRestoringPermission = ref(false);
 
 const handleSetRootDirectory = async (handle: FileSystemDirectoryHandle) => {
     rootDirectoryHandle.value = handle;
     fileTree.value = await fileService.readDirectory(handle);
+    await fileService.setStoredRootHandle(handle);
+    isRestoringPermission.value = false;
 };
+
+const handleRestoreAccess = async () => {
+    if (!rootDirectoryHandle.value) return;
+    const granted = await fileService.verifyPermission(rootDirectoryHandle.value, false);
+    if (granted) {
+        fileTree.value = await fileService.readDirectory(rootDirectoryHandle.value);
+        isRestoringPermission.value = false;
+    }
+};
+
+onMounted(async () => {
+    window.addEventListener('keydown', handleGlobalKeydown);
+
+    // Attempt to restore session
+    const storedHandle = await fileService.getStoredRootHandle();
+    if (storedHandle) {
+        rootDirectoryHandle.value = storedHandle;
+        // Check permission without user gesture first
+        // @ts-ignore
+        const permission = await storedHandle.queryPermission({ mode: 'read' });
+        if (permission === 'granted') {
+            fileTree.value = await fileService.readDirectory(storedHandle);
+        } else {
+            // Needs restoration
+            isRestoringPermission.value = true;
+        }
+    }
+});
 
 const handleToggleFolder = (node: FileTreeNode) => {
     node.isOpen = !node.isOpen;
@@ -299,8 +330,9 @@ const toggleMenu = (id: string | null) => {
     <div
         class="flex h-screen w-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans overflow-hidden">
         <!-- Sidebar -->
-        <SideMenu :file-tree="fileTree" @open-settings="showSettings = true" @open-file="handleOpenFileFromTree"
-            @toggle-folder="handleToggleFolder" />
+        <SideMenu :file-tree="fileTree" :is-restoring="isRestoringPermission" @open-settings="showSettings = true"
+            @open-file="handleOpenFileFromTree" @toggle-folder="handleToggleFolder"
+            @restore-access="handleRestoreAccess" />
 
         <!-- Main Content (Flex Column) -->
         <div class="flex-1 flex flex-col min-w-0 relative">
@@ -327,8 +359,8 @@ const toggleMenu = (id: string | null) => {
         </div>
 
         <!-- Dialogs -->
-        <SettingsDialog :is-open="showSettings" @close="showSettings = false"
-            @set-root-directory="handleSetRootDirectory" />
+        <SettingsDialog :is-open="showSettings" :current-directory="rootDirectoryHandle?.name"
+            @close="showSettings = false" @set-root-directory="handleSetRootDirectory" />
     </div>
 </template>
 

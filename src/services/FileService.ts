@@ -131,6 +131,37 @@ export class FileService {
         const file = await handle.getFile();
         return await file.text();
     }
+
+    // --- Persistence ---
+    async getStoredRootHandle(): Promise<FileSystemDirectoryHandle | undefined> {
+        const { get } = await import('idb-keyval');
+        return await get('rootDirHandle');
+    }
+
+    async setStoredRootHandle(handle: FileSystemDirectoryHandle): Promise<void> {
+        const { set } = await import('idb-keyval');
+        await set('rootDirHandle', handle);
+    }
+
+    async removeStoredRootHandle(): Promise<void> {
+        const { del } = await import('idb-keyval');
+        await del('rootDirHandle');
+    }
+
+    async verifyPermission(handle: FileSystemDirectoryHandle, readWrite: boolean = false): Promise<boolean> {
+        const options: any = {
+            mode: readWrite ? 'readwrite' : 'read'
+        };
+        // @ts-ignore
+        if ((await handle.queryPermission(options)) === 'granted') {
+            return true;
+        }
+        // @ts-ignore
+        if ((await handle.requestPermission(options)) === 'granted') {
+            return true;
+        }
+        return false;
+    }
 }
 
 export const fileService = new FileService();
