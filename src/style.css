@@ -1,6 +1,8 @@
 @tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@html.dark {
+html.dark {
   color-scheme: dark;
 }
 
@@ -16,5 +18,3 @@
   overflow-x: auto;
   overflow-y: hidden;
 }
-
-@tailwind utilities;
