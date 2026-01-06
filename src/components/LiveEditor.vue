@@ -86,8 +86,8 @@ const saveBlock = (index: number) => {
         return;
     }
 
-    // Trim content
-    block.markdown = block.markdown.trim();
+    // Trim content and normalize newlines (max 2)
+    block.markdown = block.markdown.trim().replace(/\n{3,}/g, '\n\n');
 
     block.html = DOMPurify.sanitize(md.render(block.markdown));
     block.isEditing = false;
