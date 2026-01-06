@@ -132,8 +132,8 @@ const updateBlockHeight = (event: Event) => {
 };
 
 const resizeTextarea = (element: HTMLTextAreaElement) => {
-    element.style.height = 'auto';
-    element.style.height = element.scrollHeight + 'px';
+    element.style.height = '1px'; // Collapse to calculate proper scrollHeight
+    element.style.height = (element.scrollHeight) + 'px';
 }
 
 // Handle special keys in textarea
@@ -204,7 +204,7 @@ const handleKeydown = (e: KeyboardEvent, index: number) => {
 
                 <!-- Edit Mode -->
                 <textarea v-else :id="`textarea-${index}`" v-model="block.markdown" @blur="saveBlock(index)"
-                    @input="updateBlockHeight" @keydown="handleKeydown($event, index)"
+                    @input="updateBlockHeight" @keydown="handleKeydown($event, index)" rows="1"
                     class="w-full p-4 bg-transparent font-mono text-base focus:outline-none resize-none overflow-hidden block"
                     placeholder="Empty block..."></textarea>
             </div>
