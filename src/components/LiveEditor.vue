@@ -35,62 +35,12 @@ const isHistoryNavigating = ref(false);
 const fileName = ref('untitled');
 const isDirty = ref(false);
 const currentFileHandle = ref<any>(null);
+const savedContent = ref('');
+
+// Navigate / Undo / Redo logic...
 
 // Initialize content
 const rawContent = ref(props.initialContent || '# New file\n\nHello world!');
-
-// --- History Logic ---
-const cloneBlocks = (blocks: Block[]): Block[] => {
-    return blocks.map(b => ({ ...b }));
-};
-
-const pushHistory = () => {
-    if (isHistoryNavigating.value) return;
-
-    // Mark as dirty whenever we modify history (implies a change)
-    isDirty.value = true;
-
-    if (historyIndex.value < history.value.length - 1) {
-        history.value = history.value.slice(0, historyIndex.value + 1);
-    }
-
-    history.value.push(cloneBlocks(blocks.value));
-    historyIndex.value++;
-
-    if (history.value.length > 50) {
-        history.value.shift();
-        historyIndex.value--;
-    }
-    console.log(`History Pushed: Index ${historyIndex.value}, Length ${history.value.length}`);
-};
-
-const undo = () => {
-    if (historyIndex.value > 0) {
-        isHistoryNavigating.value = true;
-        historyIndex.value--;
-        const snapshot = history.value[historyIndex.value];
-        if (snapshot) {
-            blocks.value = cloneBlocks(snapshot);
-        }
-        isHistoryNavigating.value = false;
-        isDirty.value = true; // Undo also counts as a change from saved state effectively, unless we track saved index
-        console.log(`Undo: Index ${historyIndex.value}`);
-    }
-};
-
-const redo = () => {
-    if (historyIndex.value < history.value.length - 1) {
-        isHistoryNavigating.value = true;
-        historyIndex.value++;
-        const snapshot = history.value[historyIndex.value];
-        if (snapshot) {
-            blocks.value = cloneBlocks(snapshot);
-        }
-        isHistoryNavigating.value = false;
-        isDirty.value = true;
-        console.log(`Redo: Index ${historyIndex.value}`);
-    }
-};
 
 // --- Logic ---
 const parseBlocks = (content: string) => {
@@ -106,16 +56,80 @@ const parseBlocks = (content: string) => {
     });
 };
 
-// Initial parse
-blocks.value = parseBlocks(rawContent.value);
-pushHistory();
-// Reset dirty after initial load
-isDirty.value = false;
-
-// --- Actions ---
 const serializeContent = () => {
     return blocks.value.map(b => b.markdown).join('\n<!-- block -->\n');
 };
+
+const checkDirty = () => {
+    isDirty.value = serializeContent() !== savedContent.value;
+};
+
+// --- History Logic ---
+const cloneBlocks = (blocks: Block[]): Block[] => {
+    return blocks.map(b => ({ ...b }));
+};
+
+const pushHistory = () => {
+    if (isHistoryNavigating.value) return;
+
+    if (historyIndex.value < history.value.length - 1) {
+        history.value = history.value.slice(0, historyIndex.value + 1);
+    }
+
+    history.value.push(cloneBlocks(blocks.value));
+    historyIndex.value++;
+
+    if (history.value.length > 50) {
+        history.value.shift();
+        historyIndex.value--;
+    }
+    console.log(`History Pushed: Index ${historyIndex.value}, Length ${history.value.length}`);
+    // watcher handles dirty check
+};
+
+const undo = () => {
+    if (historyIndex.value > 0) {
+        isHistoryNavigating.value = true;
+        historyIndex.value--;
+        const snapshot = history.value[historyIndex.value];
+        if (snapshot) {
+            blocks.value = cloneBlocks(snapshot);
+        }
+        isHistoryNavigating.value = false;
+        console.log(`Undo: Index ${historyIndex.value}`);
+        // watcher handles dirty check
+    }
+};
+
+const redo = () => {
+    if (historyIndex.value < history.value.length - 1) {
+        isHistoryNavigating.value = true;
+        historyIndex.value++;
+        const snapshot = history.value[historyIndex.value];
+        if (snapshot) {
+            blocks.value = cloneBlocks(snapshot);
+        }
+        isHistoryNavigating.value = false;
+        console.log(`Redo: Index ${historyIndex.value}`);
+        // watcher handles dirty check
+    }
+};
+
+
+// Initial parse
+blocks.value = parseBlocks(rawContent.value);
+pushHistory();
+
+// Initialize saved content
+savedContent.value = serializeContent();
+checkDirty(); // Should be false initially
+
+// Watch blocks deeply to check dirty status
+watch(blocks, () => {
+    checkDirty();
+}, { deep: true });
+
+// --- Actions ---
 
 const handleSaveFile = async () => {
     const content = serializeContent();
@@ -158,7 +172,8 @@ const handleSaveFile = async () => {
             URL.revokeObjectURL(url);
         }
 
-        isDirty.value = false;
+        savedContent.value = serializeContent();
+        checkDirty();
         console.log(`Saved to ${fileName.value}.mthd`);
     } catch (err: any) {
         if (err.name !== 'AbortError') {
