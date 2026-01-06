@@ -7,6 +7,8 @@ import 'katex/dist/katex.min.css';
 import type { Block } from '../types';
 import EditorBlock from './editor/EditorBlock.vue';
 import TopBar from './TopBar.vue';
+import SideMenu from './SideMenu.vue';
+import SettingsDialog from './SettingsDialog.vue';
 
 // --- Props ---
 const props = defineProps<{
@@ -30,6 +32,7 @@ const activeMenuBlockId = ref<string | null>(null);
 const history = ref<Block[][]>([]);
 const historyIndex = ref(-1);
 const isHistoryNavigating = ref(false);
+const showSettings = ref(false);
 
 // File State
 const fileName = ref('untitled');
@@ -399,22 +402,36 @@ const toggleMenu = (id: string | null) => {
 </script>
 
 <template>
-    <div class="min-h-screen flex flex-col">
-        <!-- Top Bar -->
-        <TopBar :filename="fileName" :is-dirty="isDirty" @save="handleSaveFile" @open="handleOpenFile" />
-        <div class="max-w-3xl mx-auto py-12 px-6 flex-1 w-full text-gray-800 dark:text-gray-100">
-            <div class="space-y-4">
-                <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
-                    :active-menu-block-id="activeMenuBlockId" @edit="editBlock" @save="saveBlock"
-                    @duplicate="duplicateBlock" @rename="promptRenameBlock" @remove="removeBlock"
-                    @menu-toggle="toggleMenu" @keydown="handleKeydown" @mouseleave="activeMenuBlockId = null" />
+    <div
+        class="flex h-screen w-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans overflow-hidden">
+        <!-- Sidebar -->
+        <SideMenu @open-settings="showSettings = true" />
 
-                <!-- Add New Block Area -->
-                <div @click="addNextBlock"
-                    class="h-12 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center justify-center text-gray-400 opacity-0 hover:opacity-100 transition-all duration-200">
-                    <span class="text-sm">+ Add a new block</span>
+        <!-- Main Content (Flex Column) -->
+        <div class="flex-1 flex flex-col min-w-0 relative">
+            <!-- Top Bar -->
+            <TopBar :filename="fileName" :is-dirty="isDirty" @save="handleSaveFile" @open="handleOpenFile" />
+
+            <div class="flex-1 overflow-y-auto w-full">
+                <div class="max-w-3xl mx-auto py-12 px-6">
+                    <div class="space-y-4">
+                        <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
+                            :active-menu-block-id="activeMenuBlockId" @update:block="saveBlock(index)"
+                            @toggle-menu="toggleMenu" @duplicate="duplicateBlock(index)" @remove="removeBlock(index)"
+                            @edit="editBlock(index)" @rename="promptRenameBlock(index)"
+                            @keydown-enter="handleKeydown($event, index)" />
+
+                        <!-- Add New Block Area -->
+                        <div @click="addNextBlock"
+                            class="h-12 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center justify-center text-gray-400 opacity-0 hover:opacity-100 transition-all duration-200">
+                            <span class="text-sm">+ Add a new block</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Dialogs -->
+        <SettingsDialog :is-open="showSettings" @close="showSettings = false" />
     </div>
 </template>

@@ -12,7 +12,7 @@ const emit = defineEmits<{
 
 <template>
     <div
-        class="sticky top-0 z-40 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between shadow-sm">
+        class="sticky top-0 z-40 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-3 min-h-16 flex items-center justify-between shadow-sm">
         <div class="flex items-center gap-2 flex-1 max-w-2xl">
             <h1 class="font-medium text-gray-700 dark:text-gray-200 text-sm">
                 <span>{{ filename || 'untitled' }}</span>
