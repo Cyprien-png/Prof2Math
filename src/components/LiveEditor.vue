@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import MarkdownIt from 'markdown-it';
 import mkKatex from 'markdown-it-katex';
 import DOMPurify from 'dompurify';
 import 'katex/dist/katex.min.css';
 import type { Block } from '../types';
 import EditorBlock from './editor/EditorBlock.vue';
+import TopBar from './TopBar.vue';
 
 // --- Props ---
 const props = defineProps<{
@@ -30,6 +31,11 @@ const history = ref<Block[][]>([]);
 const historyIndex = ref(-1);
 const isHistoryNavigating = ref(false);
 
+// File State
+const fileName = ref('untitled');
+const isDirty = ref(false);
+const currentFileHandle = ref<any>(null);
+
 // Initialize content
 const rawContent = ref(props.initialContent || '# New file\n\nHello world!');
 
@@ -40,6 +46,9 @@ const cloneBlocks = (blocks: Block[]): Block[] => {
 
 const pushHistory = () => {
     if (isHistoryNavigating.value) return;
+
+    // Mark as dirty whenever we modify history (implies a change)
+    isDirty.value = true;
 
     if (historyIndex.value < history.value.length - 1) {
         history.value = history.value.slice(0, historyIndex.value + 1);
@@ -64,6 +73,7 @@ const undo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
+        isDirty.value = true; // Undo also counts as a change from saved state effectively, unless we track saved index
         console.log(`Undo: Index ${historyIndex.value}`);
     }
 };
@@ -77,6 +87,7 @@ const redo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
+        isDirty.value = true;
         console.log(`Redo: Index ${historyIndex.value}`);
     }
 };
@@ -98,8 +109,65 @@ const parseBlocks = (content: string) => {
 // Initial parse
 blocks.value = parseBlocks(rawContent.value);
 pushHistory();
+// Reset dirty after initial load
+isDirty.value = false;
 
 // --- Actions ---
+const serializeContent = () => {
+    return blocks.value.map(b => b.markdown).join('\n<!-- block -->\n');
+};
+
+const handleSaveFile = async () => {
+    const content = serializeContent();
+    const fullFileName = `${fileName.value}.mthd`;
+
+    try {
+        // @ts-ignore - File System Access API types might be missing
+        if (window.showSaveFilePicker) {
+            let handle = currentFileHandle.value;
+
+            if (!handle) {
+                // @ts-ignore
+                handle = await window.showSaveFilePicker({
+                    suggestedName: fullFileName,
+                    types: [{
+                        description: 'MathDown File',
+                        accept: { 'text/markdown': ['.mthd'] },
+                    }],
+                });
+                currentFileHandle.value = handle;
+                // Update filename from handle
+                if (handle.name) {
+                    fileName.value = handle.name.replace('.mthd', '');
+                }
+            }
+
+            // @ts-ignore
+            const writable = await handle.createWritable();
+            await writable.write(content);
+            await writable.close();
+
+        } else {
+            // Fallback: Download
+            const blob = new Blob([content], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fullFileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        isDirty.value = false;
+        console.log(`Saved to ${fileName.value}.mthd`);
+    } catch (err: any) {
+        if (err.name !== 'AbortError') {
+            console.error('Failed to save file:', err);
+            alert('Failed to save file');
+        }
+    }
+};
+
 const editBlock = (index: number) => {
     blocks.value.forEach((b, i) => {
         b.isEditing = i === index;
@@ -129,6 +197,8 @@ const saveBlock = (index: number) => {
 
     block.html = DOMPurify.sanitize(md.render(block.markdown));
     block.isEditing = false;
+
+    // Only push history if it was editing? usage of saveBlock implies it was
     pushHistory();
 };
 
@@ -196,6 +266,10 @@ const handleGlobalKeydown = (e: KeyboardEvent) => {
     } else if (e.key === 'y') {
         redo();
         e.preventDefault();
+    } else if (e.key === 's') {
+        // Global save
+        handleSaveFile();
+        e.preventDefault();
     }
 };
 
@@ -221,17 +295,21 @@ const toggleMenu = (id: string | null) => {
 </script>
 
 <template>
-    <div class="max-w-3xl mx-auto py-12 px-6 min-h-screen text-gray-800 dark:text-gray-100">
-        <div class="space-y-4">
-            <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
-                :active-menu-block-id="activeMenuBlockId" @edit="editBlock" @save="saveBlock"
-                @duplicate="duplicateBlock" @rename="promptRenameBlock" @remove="removeBlock" @menu-toggle="toggleMenu"
-                @keydown="handleKeydown" @mouseleave="activeMenuBlockId = null" />
+    <div class="min-h-screen flex flex-col">
+        <!-- Top Bar -->
+        <TopBar :filename="fileName" :is-dirty="isDirty" @save="handleSaveFile" />
+        <div class="max-w-3xl mx-auto py-12 px-6 flex-1 w-full text-gray-800 dark:text-gray-100">
+            <div class="space-y-4">
+                <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
+                    :active-menu-block-id="activeMenuBlockId" @edit="editBlock" @save="saveBlock"
+                    @duplicate="duplicateBlock" @rename="promptRenameBlock" @remove="removeBlock"
+                    @menu-toggle="toggleMenu" @keydown="handleKeydown" @mouseleave="activeMenuBlockId = null" />
 
-            <!-- Add New Block Area -->
-            <div @click="addNextBlock"
-                class="h-12 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center justify-center text-gray-400 opacity-0 hover:opacity-100 transition-all duration-200">
-                <span class="text-sm">+ Add a new block</span>
+                <!-- Add New Block Area -->
+                <div @click="addNextBlock"
+                    class="h-12 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center justify-center text-gray-400 opacity-0 hover:opacity-100 transition-all duration-200">
+                    <span class="text-sm">+ Add a new block</span>
+                </div>
             </div>
         </div>
     </div>
