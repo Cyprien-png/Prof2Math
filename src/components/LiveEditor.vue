@@ -40,7 +40,7 @@ const savedContent = ref('');
 // Navigate / Undo / Redo logic...
 
 // Initialize content
-const rawContent = ref(props.initialContent || '<!-- block: Introduction -->\n# New file\n\nHello world!');
+const rawContent = ref(props.initialContent || '<!-- block -->\n# New file\n\nHello world!');
 
 // --- Logic ---
 const parseBlocks = (content: string) => {
