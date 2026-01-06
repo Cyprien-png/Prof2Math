@@ -81,6 +81,9 @@ const saveBlock = (index: number) => {
         return;
     }
 
+    // Trim content
+    block.markdown = block.markdown.trim();
+
     block.html = DOMPurify.sanitize(md.render(block.markdown));
     block.isEditing = false;
 };
