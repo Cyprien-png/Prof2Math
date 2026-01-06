@@ -44,10 +44,10 @@ const focusTextarea = () => {
 
 defineExpose({ focusTextarea });
 
-// Watch for edit mode to resize
+// Watch for edit mode to focus and resize
 watch(() => props.block.isEditing, (newVal) => {
     if (newVal) {
-        nextTick(resizeTextarea);
+        focusTextarea();
     }
 });
 
