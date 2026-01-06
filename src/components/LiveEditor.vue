@@ -205,8 +205,9 @@ const handleKeydown = (e: KeyboardEvent, index: number) => {
             <div @click="() => {
                 blocks.push({ id: `new-${Date.now()}`, markdown: '', html: '', isEditing: true });
                 nextTick(() => editBlock(blocks.length - 1));
-            }" class="h-12 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center justify-center text-gray-400 opacity-0 hover:opacity-100 transition-all duration-200">
-                <span class="text-sm">+ Add Text</span>
+            }"
+                class="h-12 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center justify-center text-gray-400 opacity-0 hover:opacity-100 transition-all duration-200">
+                <span class="text-sm">+ Add a new block</span>
             </div>
         </div>
     </div>
