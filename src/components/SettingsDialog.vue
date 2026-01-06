@@ -41,11 +41,11 @@ onMounted(() => {
 
         <!-- Dialog -->
         <div
-            class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
+            class="relative bg-white dark:bg-neutral-800 rounded-lg shadow-xl w-full max-w-md p-6 border border-neutral-200 dark:border-neutral-700">
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">Settings</h2>
+                <h2 class="text-xl font-bold text-neutral-800 dark:text-neutral-100">Settings</h2>
                 <button @click="emit('close')"
-                    class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    class="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                         stroke="currentColor" class="size-6">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -56,10 +56,10 @@ onMounted(() => {
             <div class="space-y-4">
                 <!-- Dark Mode Toggle -->
                 <div class="flex items-center justify-between">
-                    <span class="text-gray-700 dark:text-gray-300 font-medium">Dark Mode</span>
+                    <span class="text-neutral-700 dark:text-neutral-300 font-medium">Dark Mode</span>
                     <button @click="toggleDark"
                         class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                        :class="isDark ? 'bg-blue-600' : 'bg-gray-200'">
+                        :class="isDark ? 'bg-blue-600' : 'bg-neutral-200'">
                         <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
                             :class="isDark ? 'translate-x-6' : 'translate-x-1'" />
                     </button>

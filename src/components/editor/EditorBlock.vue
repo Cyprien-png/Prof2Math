@@ -79,12 +79,12 @@ const onInput = (e: Event) => {
 
 <template>
     <div class="relative group rounded-md transition-all duration-200"
-        :class="{ 'ring-1 ring-blue-500/20 bg-blue-50/10': block.isEditing, 'hover:bg-gray-50 dark:hover:bg-gray-800/50 block-hover-effect': !block.isEditing }"
+        :class="{ 'ring-1 ring-blue-500/20 bg-blue-50/10': block.isEditing, 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50 block-hover-effect': !block.isEditing }"
         @mouseleave="emit('mouseleave')">
 
         <!-- Block Name Label -->
         <div v-if="block.name"
-            class="absolute -top-3 left-0 mx-2 px-2 py-1 bg-gray-50 dark:bg-gray-900 text-xs font-mono text-gray-500 select-none z-10">
+            class="absolute -top-3 left-0 mx-2 px-2 py-1 bg-neutral-50 dark:bg-neutral-900 text-xs font-mono text-neutral-500 select-none z-10">
             {{ block.name }}
         </div>
 
@@ -97,7 +97,7 @@ const onInput = (e: Event) => {
 
         <!-- Preview Mode -->
         <div v-if="!block.isEditing" @click="emit('edit', index)"
-            class="prose prose-slate dark:prose-invert max-w-none cursor-text px-8 py-4 rounded min-h-[2rem] border border-gray-200 dark:border-gray-700"
+            class="prose prose-slate dark:prose-invert max-w-none cursor-text px-8 py-4 rounded min-h-[2rem] border border-neutral-200 dark:border-neutral-700"
             v-html="block.html"></div>
 
         <!-- Edit Mode -->

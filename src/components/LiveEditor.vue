@@ -403,7 +403,7 @@ const toggleMenu = (id: string | null) => {
 
 <template>
     <div
-        class="flex h-screen w-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans overflow-hidden">
+        class="flex h-screen w-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans overflow-hidden">
         <!-- Sidebar -->
         <SideMenu @open-settings="showSettings = true" />
 
@@ -423,7 +423,7 @@ const toggleMenu = (id: string | null) => {
 
                         <!-- Add New Block Area -->
                         <div @click="addNextBlock"
-                            class="h-12 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center justify-center text-gray-400 opacity-0 hover:opacity-100 transition-all duration-200">
+                            class="h-12 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded flex items-center justify-center text-neutral-400 opacity-0 hover:opacity-100 transition-all duration-200">
                             <span class="text-sm">+ Add a new block</span>
                         </div>
                     </div>

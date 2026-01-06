@@ -3,7 +3,7 @@ import LiveEditor from './components/LiveEditor.vue';
 </script>
 
 <template>
-  <div class="min-h-screen w-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans">
+  <div class="min-h-screen w-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans">
     <LiveEditor />
   </div>
 </template>

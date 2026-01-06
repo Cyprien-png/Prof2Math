@@ -9,10 +9,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div class="h-screen bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-300 relative group z-50"
+    <div class="h-screen bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 flex flex-col transition-all duration-300 relative group z-50"
         :class="isCollapsed ? 'w-16' : 'w-64'">
         <!-- Logo / Brand & Toggle -->
-        <div class="h-16 flex items-center px-4 border-b border-gray-200 dark:border-gray-800"
+        <div class="h-16 flex items-center px-4 border-b border-neutral-200 dark:border-neutral-800"
             :class="isCollapsed ? 'justify-center' : 'justify-between'">
 
             <span v-if="!isCollapsed" class="font-bold text-xl text-blue-600 dark:text-blue-400 truncate">
@@ -20,7 +20,7 @@ const emit = defineEmits<{
             </span>
 
             <button @click="isCollapsed = !isCollapsed"
-                class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 transition-colors"
+                class="p-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 transition-colors"
                 title="Toggle Sidebar">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="size-6">
@@ -37,9 +37,9 @@ const emit = defineEmits<{
         </div>
 
         <!-- Bottom Actions -->
-        <div class="p-2 border-t border-gray-200 dark:border-gray-800">
+        <div class="p-2 border-t border-neutral-200 dark:border-neutral-800">
             <button @click="emit('open-settings')"
-                class="w-full flex items-center p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
+                class="w-full flex items-center p-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400 transition-colors"
                 :class="isCollapsed ? 'justify-center' : 'justify-start gap-3'">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="size-6">
