@@ -45,7 +45,7 @@ export class BlockService {
         return blocks.map(b => {
             const namePart = b.name ? `: ${b.name}` : '';
             return `<!-- block${namePart} -->\n${b.markdown}`;
-        }).join('\n\n');
+        }).join('\n\n').trim();
     }
 
     createBlock(markdown: string, name?: string, isLegacy = false): Block {

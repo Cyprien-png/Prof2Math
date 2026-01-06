@@ -135,7 +135,8 @@ const handleOpenFile = async () => {
         history.value = [];
         historyIndex.value = -1;
         pushHistory();
-        savedContent.value = result.content; // Use raw content as saved base
+        pushHistory();
+        savedContent.value = blockService.serializeBlocks(blocks.value); // Normalize saved state to match serialization
         checkDirty();
     }
 };
@@ -309,7 +310,7 @@ const handleOpenFileFromTree = async (handle: FileSystemFileHandle) => {
         pushHistory();
 
         // Reset Dirty
-        savedContent.value = content;
+        savedContent.value = blockService.serializeBlocks(blocks.value);
         checkDirty();
 
         console.log(`Opened file from tree: ${fileName.value}`);
