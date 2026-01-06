@@ -244,11 +244,9 @@ onUnmounted(() => {
 
 // Add Block Helper
 const addNextBlock = () => {
-    blocks.value.push(blockService.createBlock('', undefined, false));
-    // Set isEditing manually because createBlock defaults to false, but for new block we usually want it true?
-    // Let's update createBlock or just set it here.
-    const lastBlock = blocks.value[blocks.value.length - 1];
-    lastBlock.isEditing = true;
+    const newBlock = blockService.createBlock('', undefined, false);
+    newBlock.isEditing = true;
+    blocks.value.push(newBlock);
 
     pushHistory();
 }
