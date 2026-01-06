@@ -42,4 +42,5 @@ const emit = defineEmits<{
                 <span v-if="isDirty" class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
             </button>
         </div>
+    </div>
 </template>
