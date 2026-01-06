@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
+import { nextTick, ref, watch, onMounted } from 'vue';
 import type { Block } from '../../types';
 import BlockActionsMenu from './BlockActionsMenu.vue';
 
@@ -47,6 +47,12 @@ defineExpose({ focusTextarea });
 // Watch for edit mode to focus and resize
 watch(() => props.block.isEditing, (newVal) => {
     if (newVal) {
+        focusTextarea();
+    }
+});
+
+onMounted(() => {
+    if (props.block.isEditing) {
         focusTextarea();
     }
 });
