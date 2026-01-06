@@ -40,24 +40,68 @@ const savedContent = ref('');
 // Navigate / Undo / Redo logic...
 
 // Initialize content
-const rawContent = ref(props.initialContent || '# New file\n\nHello world!');
+const rawContent = ref(props.initialContent || '<!-- block: Introduction -->\n# New file\n\nHello world!');
 
 // --- Logic ---
 const parseBlocks = (content: string) => {
-    const rawBlocks = content.split(/\n*<!-- block -->\n*/);
+    // Regex to split by delimiters, capturing optional name
+    // Matches: <!-- block --> OR <!-- block: Name -->
+    const regex = /\n*<!--\s*block(?::\s*(.*?))?\s*-->\n*/g;
+    const rawParts = content.split(regex);
 
-    return rawBlocks.map((text, index) => {
-        return {
-            id: `block-${index}-${Date.now()}`,
-            markdown: text,
-            html: DOMPurify.sanitize(md.render(text)),
+    // rawParts will be: [text0, name1, text1, name2, text2, ...]
+
+    const newBlocks: Block[] = [];
+
+    let startIndex = 0;
+
+    // If the file starts with a delimiter, text0 (rawParts[0]) will be empty (or whitespace).
+    // In our new format, we expect files to start with a delimiter.
+    // If it DOESN'T (legacy file), we treat text0 as the first block (Untitled).
+
+    if (rawParts.length > 0) {
+        const firstChunk = rawParts[0];
+        if (firstChunk && firstChunk.trim().length > 0) {
+            // Legacy format: content before first delimiter
+            newBlocks.push({
+                id: `block-legacy-${Date.now()}`,
+                markdown: firstChunk,
+                html: DOMPurify.sanitize(md.render(firstChunk)),
+                isEditing: false,
+                name: undefined
+            });
+        }
+        // If empty, we skip it (it's the empty space before the first delimiter)
+        startIndex = 1;
+    }
+
+    // Iterate the rest in pairs [name, content]
+    // If we started with a delimiter, rawParts[1] is Name of first block, rawParts[2] is Content.
+    for (let i = startIndex; i < rawParts.length; i += 2) {
+        const name = rawParts[i];
+        // Ensure we don't go out of bounds
+        if (i + 1 >= rawParts.length) break;
+
+        const markdown = rawParts[i + 1] || '';
+
+        newBlocks.push({
+            id: `block-${(i + 1) / 2}-${Date.now()}`,
+            markdown: markdown,
+            html: DOMPurify.sanitize(md.render(markdown)),
             isEditing: false,
-        };
-    });
+            name: name ? name.trim() : undefined
+        });
+    }
+
+    return newBlocks;
 };
 
 const serializeContent = () => {
-    return blocks.value.map(b => b.markdown).join('\n<!-- block -->\n');
+    // Always map each block to "Delimiter + Content"
+    return blocks.value.map(b => {
+        const namePart = b.name ? `: ${b.name}` : '';
+        return `<!-- block${namePart} -->\n${b.markdown}`;
+    }).join('\n\n');
 };
 
 const checkDirty = () => {
