@@ -5,3 +5,11 @@ export interface Block {
     isEditing: boolean;
     name?: string;
 }
+
+export interface FileTreeNode {
+    name: string;
+    kind: 'file' | 'directory';
+    handle: FileSystemFileHandle | FileSystemDirectoryHandle;
+    children?: FileTreeNode[];
+    isOpen?: boolean;
+}

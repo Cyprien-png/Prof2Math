@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
+import FileTree from './FileTree.vue';
+import type { FileTreeNode } from '../types';
+
 const isCollapsed = ref(true);
+
+defineProps<{
+    fileTree: FileTreeNode[];
+}>();
 
 const emit = defineEmits<{
     (e: 'open-settings'): void;
+    (e: 'open-file', handle: FileSystemFileHandle): void;
+    (e: 'toggle-folder', node: FileTreeNode): void;
 }>();
 </script>
 
@@ -31,9 +40,9 @@ const emit = defineEmits<{
         </div>
 
         <!-- Menu Items -->
-        <div class="flex-1 py-4 flex flex-col gap-2 px-2">
-            <!-- Example Item -->
-            <!-- <button class="...">...</button> -->
+        <div class="flex-1 py-4 flex flex-col gap-1 px-2 overflow-y-auto">
+            <FileTree v-for="node in fileTree" :key="node.name" :node="node" @open-file="emit('open-file', $event)"
+                @toggle-folder="emit('toggle-folder', $event)" />
         </div>
 
         <!-- Bottom Actions -->

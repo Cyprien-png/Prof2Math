@@ -5,7 +5,7 @@ import texmath from 'markdown-it-texmath';
 import katex from 'katex';
 import DOMPurify from 'dompurify';
 import 'katex/dist/katex.min.css';
-import type { Block } from '../types';
+import type { Block, FileTreeNode } from '../types';
 import EditorBlock from './editor/EditorBlock.vue';
 import TopBar from './TopBar.vue';
 import SideMenu from './SideMenu.vue';
@@ -399,6 +399,82 @@ const addNextBlock = () => {
     pushHistory();
 }
 
+// --- File System Logic ---
+const rootDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
+const fileTree = ref<FileTreeNode[]>([]);
+
+const scanDirectory = async (dirHandle: FileSystemDirectoryHandle): Promise<FileTreeNode[]> => {
+    const nodes: FileTreeNode[] = [];
+    // @ts-ignore
+    for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'file') {
+            if (entry.name.endsWith('.mthd')) {
+                nodes.push({
+                    name: entry.name,
+                    kind: 'file',
+                    handle: entry,
+                });
+            }
+        } else if (entry.kind === 'directory') {
+            // Recursively scan? 
+            // For now, let's just add the folder node. We can load children lazily or eagerly.
+            // Eager loading for simplicity as requested "recursively"
+            const children = await scanDirectory(entry);
+            // Only add directory if it has content (optional, but cleaner) or always add?
+            // User asked to show them.
+            nodes.push({
+                name: entry.name,
+                kind: 'directory',
+                handle: entry,
+                children: children,
+                isOpen: false // Default closed
+            });
+        }
+    }
+    // Sort: directories first, then files
+    return nodes.sort((a, b) => {
+        if (a.kind === b.kind) return a.name.localeCompare(b.name);
+        return a.kind === 'directory' ? -1 : 1;
+    });
+};
+
+const handleSetRootDirectory = async (handle: FileSystemDirectoryHandle) => {
+    rootDirectoryHandle.value = handle;
+    fileTree.value = await scanDirectory(handle);
+    console.log('File tree loaded:', fileTree.value);
+};
+
+const handleToggleFolder = (node: FileTreeNode) => {
+    node.isOpen = !node.isOpen;
+};
+
+const handleOpenFileFromTree = async (handle: FileSystemFileHandle) => {
+    try {
+        const file = await handle.getFile();
+        const content = await file.text();
+
+        // Load file logic similar to handleOpenFile
+        currentFileHandle.value = handle;
+        fileName.value = handle.name.replace(/\.mthd$/, '');
+        blocks.value = parseBlocks(content);
+
+        // Reset History
+        history.value = [];
+        historyIndex.value = -1;
+        pushHistory();
+
+        // Reset Dirty
+        savedContent.value = serializeContent();
+        checkDirty();
+
+        console.log(`Opened file from tree: ${fileName.value}`);
+    } catch (err) {
+        console.error('Failed to open file from tree:', err);
+        alert('Failed to open file');
+    }
+};
+
+
 const toggleMenu = (id: string | null) => {
     activeMenuBlockId.value = id;
 }
@@ -409,7 +485,8 @@ const toggleMenu = (id: string | null) => {
     <div
         class="flex h-screen w-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans overflow-hidden">
         <!-- Sidebar -->
-        <SideMenu @open-settings="showSettings = true" />
+        <SideMenu :file-tree="fileTree" @open-settings="showSettings = true" @open-file="handleOpenFileFromTree"
+            @toggle-folder="handleToggleFolder" />
 
         <!-- Main Content (Flex Column) -->
         <div class="flex-1 flex flex-col min-w-0 relative">
@@ -436,7 +513,8 @@ const toggleMenu = (id: string | null) => {
         </div>
 
         <!-- Dialogs -->
-        <SettingsDialog :is-open="showSettings" @close="showSettings = false" />
+        <SettingsDialog :is-open="showSettings" @close="showSettings = false"
+            @set-root-directory="handleSetRootDirectory" />
     </div>
 </template>
 
