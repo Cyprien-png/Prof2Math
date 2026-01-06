@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted } from 'vue';
 import MarkdownIt from 'markdown-it';
 import mkKatex from 'markdown-it-katex';
 import DOMPurify from 'dompurify';
@@ -11,7 +11,7 @@ interface Block {
     markdown: string;
     html: string;
     isEditing: boolean;
-    name?: string; // New: Block name
+    name?: string;
 }
 
 // --- Props ---
@@ -30,10 +30,67 @@ md.use(mkKatex);
 
 // --- State ---
 const blocks = ref<Block[]>([]);
-const activeMenuBlockId = ref<string | null>(null); // For handling menu state
+const activeMenuBlockId = ref<string | null>(null);
+
+// History State
+const history = ref<Block[][]>([]);
+const historyIndex = ref(-1);
+const isHistoryNavigating = ref(false); // Flag to ignore changes during navigation
 
 // Initialize content
 const rawContent = ref(props.initialContent || '# Welcome to MathDown\n\nClick this text to edit it.\n\n$E=mc^2$ works too!');
+
+// --- History Logic ---
+
+// Deep clone blocks to snapshot state
+const cloneBlocks = (blocks: Block[]): Block[] => {
+    return blocks.map(b => ({ ...b }));
+};
+
+const pushHistory = () => {
+    if (isHistoryNavigating.value) return;
+
+    // If we undo and then make a change, we truncate the future
+    if (historyIndex.value < history.value.length - 1) {
+        history.value = history.value.slice(0, historyIndex.value + 1);
+    }
+
+    // Push snapshot
+    history.value.push(cloneBlocks(blocks.value));
+    historyIndex.value++;
+
+    // Limit history size (optional, prevents memory leaks)
+    if (history.value.length > 50) {
+        history.value.shift();
+        historyIndex.value--;
+    }
+
+    console.log(`History Pushed: Index ${historyIndex.value}, Length ${history.value.length}`);
+};
+
+const undo = () => {
+    if (historyIndex.value > 0) {
+        isHistoryNavigating.value = true;
+        historyIndex.value--;
+        const snapshot = history.value[historyIndex.value];
+        // Restore
+        blocks.value = cloneBlocks(snapshot);
+        // Force re-render/cleanup logic if needed
+        isHistoryNavigating.value = false;
+        console.log(`Undo: Index ${historyIndex.value}`);
+    }
+};
+
+const redo = () => {
+    if (historyIndex.value < history.value.length - 1) {
+        isHistoryNavigating.value = true;
+        historyIndex.value++;
+        const snapshot = history.value[historyIndex.value];
+        blocks.value = cloneBlocks(snapshot);
+        isHistoryNavigating.value = false;
+        console.log(`Redo: Index ${historyIndex.value}`);
+    }
+};
 
 // --- Logic ---
 const parseBlocks = (content: string) => {
@@ -51,6 +108,8 @@ const parseBlocks = (content: string) => {
 
 // Initial parse
 blocks.value = parseBlocks(rawContent.value);
+// Initial history push
+pushHistory();
 
 // --- Actions ---
 const editBlock = (index: number) => {
@@ -66,11 +125,8 @@ const editBlock = (index: number) => {
         const textarea = document.getElementById(`textarea-${index}`);
         if (textarea) {
             textarea.focus();
-            // Force a slight delay to ensure render layout is complete if nextTick is too fast
-            // But nextTick should be enough for Vue. 
-            // Let's call resize twice just to be sure layout has settled.
+            // Force layout update for accurate scrollHeight
             resizeTextarea(textarea as HTMLTextAreaElement);
-            // Double check
             setTimeout(() => resizeTextarea(textarea as HTMLTextAreaElement), 0);
         }
     });
@@ -80,17 +136,46 @@ const saveBlock = (index: number) => {
     const block = blocks.value[index];
     if (!block) return;
 
+    // Capture state BEFORE changes for comparison? 
+    // Actually, we want to capture state AFTER changes for the history stack usually.
+    // 'undo' means 'go back to previous state'.
+    // So if I type "foo", I want to save that state.
+    // BUT, saving usually happens on BLUR.
+
+    // Check if changed?
+    // We don't have the original text easily unless we store it on edit start.
+    // For simplicity: Push history IF markdown content is different from "saved" state?
+    // Let's just Push History whenever we successfully save a valid change or delete.
+
+    const oldMarkdown = block.markdown;
+
     // Auto-remove if empty
     if (!block.markdown.trim()) {
+        pushHistory(); // Capture state BEFORE delete? No, capture state AFTER delete.
+        // Wait. Undo needs the state BEFORE the delete.
+        // The "current" state on screen (empty block) is not yet in history?
+        // Actually, we have the state from "Initial Parse" or previous edits in history.
+        // So hitting Undo will go back to when the block was there.
         blocks.value.splice(index, 1);
+        pushHistory(); // Save the "Deleted" state.
         return;
     }
 
     // Trim content and normalize newlines (max 2)
-    block.markdown = block.markdown.trim().replace(/\n{3,}/g, '\n\n');
+    const newMarkdown = block.markdown.trim().replace(/\n{3,}/g, '\n\n');
+
+    if (newMarkdown !== block.markdown) {
+        block.markdown = newMarkdown;
+    }
 
     block.html = DOMPurify.sanitize(md.render(block.markdown));
     block.isEditing = false;
+
+    // We should push history here to save the "Edited" state.
+    // Optimization: Only push if content actually changed from what was in history?
+    // Comparing with previous snapshot is expensive.
+    // Let's just push.
+    pushHistory();
 };
 
 const duplicateBlock = (index: number) => {
@@ -107,11 +192,13 @@ const duplicateBlock = (index: number) => {
     };
     blocks.value.splice(index + 1, 0, newBlock);
     activeMenuBlockId.value = null; // Close menu
+    pushHistory();
 };
 
 const removeBlock = (index: number) => {
     blocks.value.splice(index, 1);
     activeMenuBlockId.value = null; // Close menu
+    pushHistory();
 };
 
 const promptRenameBlock = (index: number) => {
@@ -121,6 +208,7 @@ const promptRenameBlock = (index: number) => {
     const newName = prompt('Enter block name:', block.name || '');
     if (newName !== null) {
         block.name = newName;
+        pushHistory();
     }
     activeMenuBlockId.value = null;
 };
@@ -149,6 +237,46 @@ const handleKeydown = (e: KeyboardEvent, index: number) => {
         }
     }
 };
+
+// Global Keyboard Shortcuts
+const handleGlobalKeydown = (e: KeyboardEvent) => {
+    // Check for Mod+Z / Mod+Y
+    const isMod = e.metaKey || e.ctrlKey;
+    if (!isMod) return;
+
+    if (e.key === 'z') {
+        if (e.shiftKey) {
+            redo();
+        } else {
+            undo();
+        }
+        e.preventDefault();
+    } else if (e.key === 'y') {
+        redo();
+        e.preventDefault();
+    }
+};
+
+onMounted(() => {
+    window.addEventListener('keydown', handleGlobalKeydown);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleGlobalKeydown);
+});
+
+// Add Block Helper
+const addNextBlock = () => {
+    blocks.value.push({ id: `new-${Date.now()}`, markdown: '', html: '', isEditing: true });
+    nextTick(() => editBlock(blocks.value.length - 1));
+    // Note: We don't push history here yet because the block is empty/being edited.
+    // We will push history when it is Saved.
+    // BUT: If the user cancels (refresh), it's gone.
+    // If user Undoes immediately? It should remove the new block.
+    // So we SHOULD push history.
+    pushHistory();
+}
+
 </script>
 
 <template>
@@ -210,10 +338,7 @@ const handleKeydown = (e: KeyboardEvent, index: number) => {
             </div>
 
             <!-- Add New Block Area -->
-            <div @click="() => {
-                blocks.push({ id: `new-${Date.now()}`, markdown: '', html: '', isEditing: true });
-                nextTick(() => editBlock(blocks.length - 1));
-            }"
+            <div @click="addNextBlock"
                 class="h-12 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center justify-center text-gray-400 opacity-0 hover:opacity-100 transition-all duration-200">
                 <span class="text-sm">+ Add a new block</span>
             </div>
