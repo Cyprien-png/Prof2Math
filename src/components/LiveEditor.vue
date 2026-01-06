@@ -160,7 +160,7 @@ const handleKeydown = (e: KeyboardEvent, index: number) => {
                 @mouseleave="activeMenuBlockId = null">
                 <!-- Block Name Label -->
                 <div v-if="block.name"
-                    class="absolute -top-3 left-0 px-2 py-0.5 text-xs font-mono text-gray-500 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded select-none z-10">
+                    class="absolute -top-3 left-0 mx-2 px-2 py-1 bg-gray-50 dark:bg-gray-900 text-xs font-mono text-gray-500 select-none z-10">
                     {{ block.name }}
                 </div>
 
@@ -180,14 +180,14 @@ const handleKeydown = (e: KeyboardEvent, index: number) => {
 
                         <!-- Dropbox Menu -->
                         <div v-if="activeMenuBlockId === block.id"
-                            class="absolute right-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg py-1 text-sm z-30">
+                            class="absolute right-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg text-sm z-30">
                             <button @click.stop="duplicateBlock(index)"
                                 class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
                                 <span>Duplicate</span>
                             </button>
                             <button @click.stop="promptRenameBlock(index)"
                                 class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                                <span>Name</span>
+                                <span>Rename</span>
                             </button>
                             <button @click.stop="removeBlock(index)"
                                 class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 hover:text-red-600 flex items-center gap-2">
@@ -199,7 +199,7 @@ const handleKeydown = (e: KeyboardEvent, index: number) => {
 
                 <!-- Preview Mode -->
                 <div v-if="!block.isEditing" @click="editBlock(index)"
-                    class="prose prose-slate dark:prose-invert max-w-none cursor-text p-4 rounded min-h-[2rem]"
+                    class="prose prose-slate dark:prose-invert max-w-none cursor-text px-8 py-4 rounded min-h-[2rem] border border-gray-200 dark:border-gray-700"
                     v-html="block.html"></div>
 
                 <!-- Edit Mode -->
