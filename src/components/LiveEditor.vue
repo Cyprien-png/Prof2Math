@@ -297,8 +297,6 @@ const toggleMenu = (id: string | null) => {
 
 </script>
 
-</script>
-
 <template>
     <div
         class="flex h-screen w-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans overflow-hidden">
@@ -309,7 +307,7 @@ const toggleMenu = (id: string | null) => {
         <!-- Main Content (Flex Column) -->
         <div class="flex-1 flex flex-col min-w-0 relative">
             <!-- Top Bar -->
-            <TopBar :filename="fileName" :is-dirty="isDirty" @save="handleSaveFile" @open="handleOpenFile" />
+            <TopBar :filename="fileName" :is-dirty="isDirty" @save="handleSaveFile" />
 
             <div class="flex-1 overflow-y-auto w-full">
                 <div class="max-w-3xl mx-auto py-12 px-6">
