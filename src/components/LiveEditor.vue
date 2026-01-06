@@ -417,8 +417,8 @@ const toggleMenu = (id: string | null) => {
                     <div class="space-y-4">
                         <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
                             :active-menu-block-id="activeMenuBlockId" @update:block="saveBlock(index)"
-                            @menu-toggle="toggleMenu" @duplicate="duplicateBlock(index)" @remove="removeBlock(index)"
-                            @edit="editBlock(index)" @rename="promptRenameBlock(index)"
+                            @save="saveBlock(index)" @menu-toggle="toggleMenu" @duplicate="duplicateBlock(index)"
+                            @remove="removeBlock(index)" @edit="editBlock(index)" @rename="promptRenameBlock(index)"
                             @keydown="handleKeydown($event, index)" />
 
                         <!-- Add New Block Area -->
