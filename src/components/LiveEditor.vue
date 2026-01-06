@@ -66,7 +66,12 @@ const editBlock = (index: number) => {
         const textarea = document.getElementById(`textarea-${index}`);
         if (textarea) {
             textarea.focus();
+            // Force a slight delay to ensure render layout is complete if nextTick is too fast
+            // But nextTick should be enough for Vue. 
+            // Let's call resize twice just to be sure layout has settled.
             resizeTextarea(textarea as HTMLTextAreaElement);
+            // Double check
+            setTimeout(() => resizeTextarea(textarea as HTMLTextAreaElement), 0);
         }
     });
 };
