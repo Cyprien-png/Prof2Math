@@ -227,6 +227,51 @@ const handleSaveFile = async () => {
     }
 };
 
+const handleOpenFile = async () => {
+    try {
+        // @ts-ignore
+        if (window.showOpenFilePicker) {
+            // @ts-ignore
+            const [handle] = await window.showOpenFilePicker({
+                types: [{
+                    description: 'MathDown File',
+                    accept: { 'text/markdown': ['.mthd'] },
+                }],
+                multiple: false
+            });
+
+            // @ts-ignore
+            const file = await handle.getFile();
+            const content = await file.text();
+
+            // Reset state
+            currentFileHandle.value = handle;
+            fileName.value = handle.name.replace(/\.mthd$/, '');
+
+            // Parse content
+            blocks.value = parseBlocks(content);
+
+            // Reset History
+            history.value = [];
+            historyIndex.value = -1;
+            pushHistory(); // Push initial state
+
+            // Reset Dirty
+            savedContent.value = serializeContent(); // Should match exactly
+            checkDirty();
+
+            console.log(`Opened file: ${fileName.value}`);
+        } else {
+            alert('Your browser does not support opening files directly.');
+        }
+    } catch (err: any) {
+        if (err.name !== 'AbortError') {
+            console.error('Failed to open file:', err);
+            alert('Failed to open file');
+        }
+    }
+};
+
 const editBlock = (index: number) => {
     blocks.value.forEach((b, i) => {
         b.isEditing = i === index;
@@ -356,7 +401,7 @@ const toggleMenu = (id: string | null) => {
 <template>
     <div class="min-h-screen flex flex-col">
         <!-- Top Bar -->
-        <TopBar :filename="fileName" :is-dirty="isDirty" @save="handleSaveFile" />
+        <TopBar :filename="fileName" :is-dirty="isDirty" @save="handleSaveFile" @open="handleOpenFile" />
         <div class="max-w-3xl mx-auto py-12 px-6 flex-1 w-full text-gray-800 dark:text-gray-100">
             <div class="space-y-4">
                 <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
