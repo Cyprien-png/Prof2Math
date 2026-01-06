@@ -1,3 +1,20 @@
 @tailwind base;
-@tailwind components;
+
+@html.dark {
+  color-scheme: dark;
+}
+
+/* Fix KaTeX alignment in content */
+.prose .katex {
+  line-height: normal;
+  font-size: 1.1em;
+}
+
+/* Ensure display math has space */
+.prose .katex-display {
+  margin: 1em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 @tailwind utilities;
