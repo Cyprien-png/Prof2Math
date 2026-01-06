@@ -286,7 +286,8 @@ const saveBlock = (index: number) => {
     const block = blocks.value[index];
     if (!block) return;
 
-    const oldMarkdown = block.markdown;
+    // const oldMarkdown = block.markdown; 
+
 
     // Auto-remove if empty
     if (!block.markdown.trim()) {
