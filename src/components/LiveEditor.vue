@@ -69,7 +69,6 @@ const undo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
-        isHistoryNavigating.value = false;
     }
 };
 
@@ -81,7 +80,6 @@ const redo = () => {
         if (snapshot) {
             blocks.value = cloneBlocks(snapshot);
         }
-        isHistoryNavigating.value = false;
         isHistoryNavigating.value = false;
     }
 };
