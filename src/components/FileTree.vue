@@ -2,9 +2,10 @@
 import { computed, ref, watch } from 'vue';
 import type { FileTreeNode } from '../types';
 import FileIcon from './icons/FileIcon.vue';
+import TrashIcon from './icons/TrashIcon.vue';
 import EllipsisIcon from './icons/EllipsisIcon.vue';
 import { fileService } from '../services/FileService';
-import { globalDragState } from '../services/DragState';
+import { globalDragState, globalDropTargetPath } from '../services/DragState';
 
 const props = defineProps<{
     node: FileTreeNode;
@@ -171,66 +172,155 @@ const onDragStart = (e: DragEvent) => {
     }
 };
 
-const isDragOver = ref(false);
+const isDragOver = computed(() => {
+    // Highlight if:
+    // 1. My path matches globalDropTargetPath (I am the target folder)
+    if (props.node.kind === 'directory' && props.node.path === globalDropTargetPath.value) return true;
+
+    // 2. My parent path matches globalDropTargetPath (I am a file in the target folder)
+    if (props.node.kind === 'file' && globalDropTargetPath.value) {
+        // Derive parent path
+        let parentPath = '';
+        if (props.node.path) {
+            const lastSlash = props.node.path.lastIndexOf('/');
+            if (lastSlash !== -1) {
+                parentPath = props.node.path.substring(0, lastSlash);
+            } else {
+                parentPath = 'ROOT'; // Special handling for root? 
+                // If globalDropTargetPath is null, we don't highlight. 
+                // If root target is represented as empty string or specific key?
+            }
+        } else {
+            // Node has no path? Should not happen with new logic, but if root...
+            parentPath = 'ROOT';
+        }
+
+        // If global target is ROOT (e.g. empty string or special), match.
+        // Our 'path' logic: root items have path="name". 
+        // So parent of "name" is logically root.
+
+        // Let's standardize root target path as "ROOT" or special string to avoid empty string ambiguity if needed.
+        // But let's check how we set it.
+        if (globalDropTargetPath.value === 'ROOT' && parentPath === 'ROOT') return true;
+        if (parentPath === globalDropTargetPath.value) return true;
+    }
+    return false;
+});
 
 const checkDropValidity = () => {
-    if (props.node.kind !== 'directory') return false;
     const dragged = globalDragState.value;
     if (!dragged || !dragged.parentHandle) return false;
-    if (dragged.node === props.node) return false;
-    // Add other checks if needed (e.g. parent/child circular)
-    return true;
+    if (dragged.node === props.node) return false; // Self
+
+    if (props.node.kind === 'directory') {
+        // Prevent drop if dragging parent into own child (not fully checked but basic check)
+        // Prevent drop if already in this folder (dragged.parentHandle === node.handle)
+        if (dragged.parentHandle === props.node.handle) return false;
+        return true;
+    } else {
+        // Properties.node is file
+        // Valid if dropping into a different folder than current
+        // Destination is props.parentHandle
+        if (!props.parentHandle) return false;
+        if (dragged.parentHandle === props.parentHandle) return false; // Sibling
+        return true;
+    }
 };
+
+const targetPath = computed(() => {
+    if (props.node.kind === 'directory') {
+        return props.node.path || 'ROOT';
+    } else {
+        if (props.node.path) {
+            const lastSlash = props.node.path.lastIndexOf('/');
+            if (lastSlash !== -1) {
+                return props.node.path.substring(0, lastSlash);
+            }
+        }
+        return 'ROOT';
+    }
+});
 
 const onDragEnter = (e: DragEvent) => {
     if (checkDropValidity()) {
-        isDragOver.value = true;
+        globalDropTargetPath.value = targetPath.value;
     }
 };
 
 const onDragLeave = (e: DragEvent) => {
-    isDragOver.value = false;
+    // If we are leaving for another element that shares the same target path, don't clear.
+    const related = e.relatedTarget as HTMLElement;
+    if (related) {
+        const closest = related.closest('[data-drop-target-path]') as HTMLElement;
+        if (closest && closest.dataset.dropTargetPath === targetPath.value) {
+            return;
+        }
+    }
+
+    // Otherwise, if we currently own the highlight, clear it.
+    if (globalDropTargetPath.value === targetPath.value) {
+        globalDropTargetPath.value = null;
+    }
 };
 
 const onDragOver = (e: DragEvent) => {
-    if (isDragOver.value) { // Optimized: rely on dragenter having done the check? No, dragover needs preventDefault.
-        // Re-check validity or trust state?
-        // Safer to re-check or duplicate minimal logic to ensure drop is allowed.
+    // Consistently allow drop if valid
+    if (checkDropValidity()) {
         e.preventDefault();
         e.dataTransfer!.dropEffect = 'move';
-    } else {
-        // Fallback if dragenter didn't fire for some reason or logic mismatch
-        if (checkDropValidity()) {
-            e.preventDefault();
-            e.dataTransfer!.dropEffect = 'move';
-            isDragOver.value = true; // Ensure visual matches
-        }
     }
 };
 
 const onDrop = async (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    isDragOver.value = false;
+    globalDropTargetPath.value = null; // Clear highlight on drop
 
     if (!checkDropValidity()) return;
 
     const dragged = globalDragState.value!; // Checked in validity
 
+    const destinationHandle = props.node.kind === 'directory'
+        ? props.node.handle as FileSystemDirectoryHandle
+        : props.parentHandle!;
+
     try {
         await fileService.moveEntry(
             dragged.parentHandle!,
             dragged.node.name,
-            props.node.handle as FileSystemDirectoryHandle
+            destinationHandle
         );
+
         // Calculate paths
         const sourcePath = dragged.node.path;
-        const newPath = props.node.path ? `${props.node.path}/${dragged.node.name}` : dragged.node.name;
+
+        // If dropping on directory: new path is dirPath + name
+        // If dropping on file: new path is parentPath + name. 
+        // ParentPath can be derived from props.node.path by removing filename? Or just props.parentHandle doesn't have path attached.
+        // Wait, props.node.path exists.
+
+        let newFolderPath = '';
+        if (props.node.kind === 'directory') {
+            newFolderPath = props.node.path || ''; // If root item, path might be just name? No, path is full path.
+        } else {
+            // Sibling file. New path is same folder path + dragged name.
+            // Get folder path from target file path
+            if (props.node.path) {
+                const lastSlash = props.node.path.lastIndexOf('/');
+                if (lastSlash !== -1) {
+                    newFolderPath = props.node.path.substring(0, lastSlash);
+                } else {
+                    newFolderPath = ''; // Root
+                }
+            }
+        }
+
+        const newPath = newFolderPath ? `${newFolderPath}/${dragged.node.name}` : dragged.node.name;
 
         if (sourcePath && newPath) {
             emit('file-moved', { sourcePath, newPath });
         } else {
-            // Fallback if paths missing for some reason
+            // Fallback
             emit('file-moved', { sourcePath: sourcePath || '', newPath: newPath || '' });
         }
         // Clear state
@@ -247,14 +337,15 @@ const displayName = computed(() => {
 </script>
 
 <template>
-    <div class="select-none text-sm font-medium">
+    <div class="select-none text-sm font-medium rounded">
         <div @click="handleClick"
             class="group/row flex items-center py-1 px-2 cursor-pointer rounded transition-colors truncate relative"
             :class="[
                 isActive ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800',
-                isDragOver ? 'bg-blue-200 dark:bg-blue-800' : ''
+                isDragOver ? 'bg-blue-200 dark:bg-blue-800 rounded-none' : ''
             ]" :style="{ paddingLeft: `${currentDepth * 12 + 8}px` }" draggable="true" @dragstart="onDragStart"
-            @dragenter="onDragEnter" @dragleave="onDragLeave" @dragover="onDragOver" @drop="onDrop">
+            @dragenter="onDragEnter" @dragleave="onDragLeave" @dragover="onDragOver" @drop="onDrop"
+            :data-drop-target-path="targetPath">
 
             <!-- Icon -->
             <span class="mr-2" :class="isActive ? 'text-blue-500 dark:text-blue-400' : 'text-neutral-400'">
