@@ -120,7 +120,7 @@ const onContextMenu = (e: MouseEvent) => {
 
 <template>
     <div class="relative group rounded-md transition-all duration-200"
-        :class="{ 'ring-1 ring-blue-500/20 bg-blue-50/10': block.isEditing, 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50 block-hover-effect': !block.isEditing }"
+        :class="{ 'bg-blue-50/10': block.isEditing, 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50 block-hover-effect': !block.isEditing }"
         @mouseleave="emit('mouseleave')" @contextmenu="onContextMenu">
 
         <!-- Block Name Label -->
@@ -144,7 +144,7 @@ const onContextMenu = (e: MouseEvent) => {
         <!-- Edit Mode -->
         <textarea v-else ref="textareaRef" :id="`textarea-${index}`" v-model="block.markdown"
             @blur="emit('save', index)" @input="onInput" @keydown="emit('keydown', $event, index)" rows="1"
-            class="w-full p-4 bg-transparent font-mono text-base focus:outline-none resize-none overflow-hidden block"
+            class="w-full p-4 bg-transparent font-mono text-base focus:outline-none focus:border-neutral-500 resize-none overflow-hidden block"
             placeholder="Empty block...">
         </textarea>
     </div>
