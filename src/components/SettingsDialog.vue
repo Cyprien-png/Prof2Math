@@ -12,6 +12,7 @@ const emit = defineEmits<{
 }>();
 
 const isDark = ref(false);
+const autosaveEnabled = ref(false);
 const activeTab = ref<'general' | 'files'>('general');
 // const currentDirectoryName = ref<string | null>(null); // Use prop instead
 
@@ -42,6 +43,11 @@ const toggleDark = () => {
     }
 };
 
+const toggleAutosave = () => {
+    autosaveEnabled.value = !autosaveEnabled.value;
+    localStorage.setItem('mathdown_autosave', String(autosaveEnabled.value));
+};
+
 onMounted(() => {
     // initialize from localstorage or system pref
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -50,6 +56,10 @@ onMounted(() => {
     } else {
         isDark.value = false;
         document.documentElement.classList.remove('dark');
+    }
+
+    if (localStorage.getItem('mathdown_autosave') === 'true') {
+        autosaveEnabled.value = true;
     }
 });
 </script>
@@ -109,6 +119,21 @@ onMounted(() => {
                                 :class="isDark ? 'bg-blue-600' : 'bg-neutral-200'">
                                 <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
                                     :class="isDark ? 'translate-x-6' : 'translate-x-1'" />
+                            </button>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div class="flex flex-col">
+                                <span class="text-neutral-700 dark:text-neutral-300 font-medium">Autosave</span>
+                                <span class="text-xs text-neutral-500 dark:text-neutral-400">
+                                    Automatically save when leaving editor, switching files, or after 3s of inactivity.
+                                </span>
+                            </div>
+                            <button @click="toggleAutosave"
+                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                :class="autosaveEnabled ? 'bg-blue-600' : 'bg-neutral-200'">
+                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                                    :class="autosaveEnabled ? 'translate-x-6' : 'translate-x-1'" />
                             </button>
                         </div>
                     </div>

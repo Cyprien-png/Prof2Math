@@ -22,6 +22,8 @@ const history = ref<Block[][]>([]);
 const historyIndex = ref(-1);
 const isHistoryNavigating = ref(false);
 const showSettings = ref(false);
+const autosaveEnabled = ref(false);
+const autosaveTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 // File State
 const fileName = ref('untitled');
@@ -56,7 +58,6 @@ const pushHistory = () => {
         history.value.shift();
         historyIndex.value--;
     }
-    // console.log(`History Pushed: Index ${historyIndex.value}, Length ${history.value.length}`);
 };
 
 const undo = () => {
@@ -68,7 +69,7 @@ const undo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
-        // console.log(`Undo: Index ${historyIndex.value}`);
+        isHistoryNavigating.value = false;
     }
 };
 
@@ -81,7 +82,7 @@ const redo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
-        // console.log(`Redo: Index ${historyIndex.value}`);
+        isHistoryNavigating.value = false;
     }
 };
 
@@ -119,6 +120,7 @@ const saveExpandedPaths = () => {
     localStorage.setItem(EXPANDED_PATHS_KEY, JSON.stringify(Array.from(expandedPaths.value)));
 };
 
+
 const handleSaveFile = async () => {
     const content = blockService.serializeBlocks(blocks.value);
 
@@ -129,6 +131,9 @@ const handleSaveFile = async () => {
             checkDirty();
             console.log(`Saved to ${fileName.value}.mthd`);
         } else {
+            // Only 'Save As' if explicit user action? 
+            // Autosave shouldn't trigger Save As dialog unexpectedly.
+            // But for now keeping behavior consistent.
             const result = await fileService.saveFileAs(content, fileName.value);
             if (result) {
                 currentFileHandle.value = result.handle;
@@ -140,6 +145,22 @@ const handleSaveFile = async () => {
     } catch (err) {
         console.error('Save failed', err);
     }
+};
+
+const triggerAutosave = () => {
+    if (!autosaveEnabled.value) return;
+
+    // Clear existing timeout
+    if (autosaveTimeout.value) {
+        clearTimeout(autosaveTimeout.value);
+    }
+
+    // Debounce 3s
+    autosaveTimeout.value = setTimeout(() => {
+        if (isDirty.value) {
+            handleSaveFile();
+        }
+    }, 3000);
 };
 
 
@@ -169,9 +190,20 @@ const saveBlock = (index: number) => {
     }
 
     block.html = blockService.renderHtml(block.markdown);
-    block.isEditing = false;
+    block.isEditing = false; // "Leave editor mode"
 
     pushHistory();
+
+    // Trigger 1: Leave editor mode
+    // Also clear any pending debounce since we are saving now? 
+    // Wait, requirement is "save when leave editor mode".
+
+    checkDirty(); // Force synchronous check
+
+    if (autosaveEnabled.value && isDirty.value) {
+        handleSaveFile();
+        if (autosaveTimeout.value) clearTimeout(autosaveTimeout.value);
+    }
 };
 
 const duplicateBlock = (index: number) => {
@@ -182,12 +214,22 @@ const duplicateBlock = (index: number) => {
     blocks.value.splice(index + 1, 0, newBlock);
     activeMenuBlockId.value = null;
     pushHistory();
+
+    checkDirty();
+    if (autosaveEnabled.value && isDirty.value) {
+        handleSaveFile();
+    }
 };
 
 const removeBlock = (index: number) => {
     blocks.value.splice(index, 1);
     activeMenuBlockId.value = null;
     pushHistory();
+
+    checkDirty();
+    if (autosaveEnabled.value && isDirty.value) {
+        handleSaveFile();
+    }
 };
 
 const promptRenameBlock = (index: number) => {
@@ -198,6 +240,11 @@ const promptRenameBlock = (index: number) => {
     if (newName !== null) {
         block.name = newName;
         pushHistory();
+
+        checkDirty();
+        if (autosaveEnabled.value && isDirty.value) {
+            handleSaveFile();
+        }
     }
     activeMenuBlockId.value = null;
 };
@@ -306,6 +353,11 @@ const loadDirectory = async () => {
 onMounted(async () => {
     window.addEventListener('keydown', handleGlobalKeydown);
 
+    // Load Autosave Setting
+    if (localStorage.getItem('mathdown_autosave') === 'true') {
+        autosaveEnabled.value = true;
+    }
+
     // Attempt to restore session
     const storedHandle = await fileService.getStoredRootHandle();
     if (storedHandle) {
@@ -321,6 +373,18 @@ onMounted(async () => {
         }
     }
 });
+
+watch(showSettings, (isOpen) => {
+    if (!isOpen) {
+        // Refresh settings when dialog closes
+        if (localStorage.getItem('mathdown_autosave') === 'true') {
+            autosaveEnabled.value = true;
+        } else {
+            autosaveEnabled.value = false;
+        }
+    }
+});
+
 
 const handleToggleFolder = (node: FileTreeNode) => {
     node.isOpen = !node.isOpen;
@@ -339,6 +403,12 @@ const currentFilePath = ref<string | null>(null);
 const handleOpenFileFromTree = async (node: FileTreeNode) => {
     try {
         const handle = node.handle as FileSystemFileHandle;
+
+        // Trigger 3: File Switch
+        if (autosaveEnabled.value && isDirty.value) {
+            await handleSaveFile();
+        }
+
         const content = await fileService.readFile(handle);
 
         currentFileHandle.value = handle;
@@ -354,8 +424,6 @@ const handleOpenFileFromTree = async (node: FileTreeNode) => {
         // Reset Dirty
         savedContent.value = blockService.serializeBlocks(blocks.value);
         checkDirty();
-
-        console.log(`Opened file from tree: ${fileName.value} (${currentFilePath.value})`);
     } catch (err) {
         console.error('Failed to open file from tree:', err);
         alert('Failed to open file');
@@ -485,9 +553,9 @@ const handleFileMoved = async (event: { sourcePath: string, newPath: string }) =
                     <div class="space-y-4">
                         <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
                             :active-menu-block-id="activeMenuBlockId" @update:block="saveBlock(index)"
-                            @save="saveBlock(index)" @menu-toggle="toggleMenu" @duplicate="duplicateBlock(index)"
-                            @remove="removeBlock(index)" @edit="editBlock(index)" @rename="promptRenameBlock(index)"
-                            @keydown="handleKeydown($event, index)" />
+                            @input="triggerAutosave" @save="saveBlock(index)" @menu-toggle="toggleMenu"
+                            @duplicate="duplicateBlock(index)" @remove="removeBlock(index)" @edit="editBlock(index)"
+                            @rename="promptRenameBlock(index)" @keydown="handleKeydown($event, index)" />
 
                         <!-- Add New Block Area -->
                         <div @click="addNextBlock"
