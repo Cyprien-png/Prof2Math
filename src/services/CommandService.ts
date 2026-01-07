@@ -70,23 +70,29 @@ export class CommandService {
             const file = await fileHandle.getFile();
 
             // 2. Determine save path
-            // Save relative to current file
-            const fileDir = context.currentFilePath.substring(0, context.currentFilePath.lastIndexOf('/'));
-            const targetPath = fileDir ? `${fileDir}/${file.name}` : file.name;
+            // Save to relative folder {filename}___images
+            const currentPath = context.currentFilePath;
+            const fileDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+            const currentFileName = currentPath.split('/').pop()?.replace('.mthd', '') || 'untitled';
+            const imagesDirName = `${currentFileName}___images`;
+
+            const targetPath = fileDir
+                ? `${fileDir}/${imagesDirName}/${file.name}`
+                : `${imagesDirName}/${file.name}`;
 
             // 3. Save Asset
             await fileService.saveAsset(context.rootHandle, targetPath, file);
 
             // 4. Return Markdown
             // Image path in markdown should be relative to the markdown file?
-            // If they are in the same folder, just filename is enough.
-            // If markdown is "foo/bar.md" and image is "foo/image.png", relative is "image.png".
-            // If markdown is "doc/foo/bar.md" and image is "doc/foo/image.png", relative is "image.png".
+            // If markdown is "foo/bar.md" and image is "foo/bar___images/image.png", relative is "bar___images/image.png".
+            // Since we save relative to the file's dir, we just need the subpath.
 
-            // For now, assume we save in the same directory, so just filename.
+            const relativeMarkdownPath = `${imagesDirName}/${file.name}`;
+
             return {
                 success: true,
-                markdown: `![${file.name}](${file.name})`
+                markdown: `![${file.name}](${relativeMarkdownPath})`
             };
 
         } catch (err: any) {

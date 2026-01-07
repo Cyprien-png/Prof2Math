@@ -374,7 +374,12 @@ const handlePaste = async (e: ClipboardEvent, index: number) => {
 
             // Save relative to current file
             const fileDir = currentFilePath.value.substring(0, currentFilePath.value.lastIndexOf('/'));
-            const targetPath = fileDir ? `${fileDir}/${filename}` : filename;
+            const currentFileName = currentFilePath.value.split('/').pop()?.replace('.mthd', '') || 'untitled';
+            const imagesDirName = `${currentFileName}___images`;
+
+            const targetPath = fileDir
+                ? `${fileDir}/${imagesDirName}/${filename}`
+                : `${imagesDirName}/${filename}`;
 
             try {
                 await fileService.saveAsset(rootDirectoryHandle.value, targetPath, file);
@@ -387,7 +392,8 @@ const handlePaste = async (e: ClipboardEvent, index: number) => {
                 const before = block.markdown.slice(0, cursor);
                 const after = block.markdown.slice(cursor);
 
-                block.markdown = `${before}![${filename}](${filename})${after}`;
+                const relativeMarkdownPath = `${imagesDirName}/${filename}`;
+                block.markdown = `${before}![${filename}](${relativeMarkdownPath})${after}`;
                 saveBlock(index);
 
             } catch (err) {
@@ -669,6 +675,27 @@ const handleRenameRootItem = async (node: FileTreeNode) => {
             newName,
             node.kind
         );
+
+        // --- 4. Logic for Sidecar Image Folder ---
+        if (node.kind === 'file') {
+            const oldBaseName = node.name.replace(/\.mthd$/, '');
+            const newBaseName = newName.replace(/\.mthd$/, '');
+            const oldImagesDir = `${oldBaseName}___images`;
+            const newImagesDir = `${newBaseName}___images`;
+
+            try {
+                // Try renaming the images folder too
+                await fileService.renameEntry(
+                    rootDirectoryHandle.value,
+                    oldImagesDir,
+                    newImagesDir,
+                    'directory'
+                );
+            } catch (e) {
+                // Ignore if image folder doesn't exist
+            }
+        }
+
         // Refresh entire tree
         await loadDirectory();
     } catch (err) {
@@ -699,10 +726,53 @@ const findNodeByPath = (nodes: FileTreeNode[], path: string): FileTreeNode | nul
         }
     }
     return null;
-};
-
+    // Not found, ignore
+}
 const handleFileMoved = async (event: { sourcePath: string, newPath: string }) => {
     if (!rootDirectoryHandle.value) return;
+
+    // --- Sidecar Image Folder Move Logic ---
+    try {
+        // Only apply if the moved item was a .mthd file
+        if (event.sourcePath.endsWith('.mthd')) {
+            const getParentPath = (p: string) => {
+                const parts = p.split('/');
+                parts.pop();
+                return parts.join('/');
+            };
+            const getFileName = (p: string) => p.split('/').pop() || '';
+
+            const sourceParentPath = getParentPath(event.sourcePath);
+            const destParentPath = getParentPath(event.newPath);
+
+            const fileName = getFileName(event.sourcePath);
+            const baseName = fileName.replace(/\.mthd$/, '');
+            const imagesDirName = `${baseName}___images`;
+
+            // Check if source images dir exists
+            const sourceParentHandle = sourceParentPath
+                ? await fileService.getDirectoryHandleByPath(rootDirectoryHandle.value, sourceParentPath)
+                : rootDirectoryHandle.value;
+
+            let imagesHandle: FileSystemDirectoryHandle | null = null;
+            try {
+                // @ts-ignore
+                imagesHandle = await sourceParentHandle.getDirectoryHandle(imagesDirName);
+            } catch (e) {
+                // Not found, ignore
+            }
+
+            if (imagesHandle) {
+                const destParentHandle = destParentPath
+                    ? await fileService.getDirectoryHandleByPath(rootDirectoryHandle.value, destParentPath)
+                    : rootDirectoryHandle.value;
+
+                await fileService.moveEntry(sourceParentHandle, imagesDirName, destParentHandle);
+            }
+        }
+    } catch (err) {
+        console.error('Failed to move sidecar images folder:', err);
+    }
 
     // Refresh tree
     await loadDirectory();
@@ -711,15 +781,6 @@ const handleFileMoved = async (event: { sourcePath: string, newPath: string }) =
     if (currentFilePath.value && currentFilePath.value === event.sourcePath) {
         const newNode = findNodeByPath(fileTree.value, event.newPath);
         if (newNode) {
-            // Reopen (just update handle, keep content as is? Content on disk is same)
-            // We call handleOpenFileFromTree to fully re-bind.
-            // Ideally we shouldn't lose unsaved changes.
-            // But existing handleOpenFileFromTree reads from disk and resets history.
-            // We should modify logic to PRESERVE unsaved changes if possible?
-            // User just said "open it with its new path".
-            // If we read from disk, we lose unsaved changes.
-            // Better: Just update handle and path.
-
             currentFileHandle.value = newNode.handle as FileSystemFileHandle;
             currentFilePath.value = newNode.path || null;
         }

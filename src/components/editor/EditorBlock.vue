@@ -78,8 +78,8 @@ const renderImages = async () => {
     const imgs = contentRef.value.querySelectorAll('img');
     for (const img of Array.from(imgs)) {
         const src = img.getAttribute('src');
-        // If it's a relative path (not data: or http:)
-        if (src && !src.startsWith('data:') && !src.startsWith('http')) {
+        // If it's a relative path (not data:, http:, or blob:)
+        if (src && !src.startsWith('data:') && !src.startsWith('http') && !src.startsWith('blob:')) {
             try {
                 // Resolve path
                 // Simple resolution: relative to current file's directory
@@ -99,6 +99,12 @@ const renderImages = async () => {
 };
 
 watch(() => props.block.html, () => {
+    if (!props.block.isEditing) {
+        nextTick(renderImages);
+    }
+});
+
+watch(() => props.currentFilePath, () => {
     if (!props.block.isEditing) {
         nextTick(renderImages);
     }
