@@ -2,7 +2,6 @@
 import { computed, ref, watch } from 'vue';
 import type { FileTreeNode } from '../types';
 import FileIcon from './icons/FileIcon.vue';
-import TrashIcon from './icons/TrashIcon.vue';
 import EllipsisIcon from './icons/EllipsisIcon.vue';
 import { fileService } from '../services/FileService';
 import { globalDragState, globalDropTargetPath } from '../services/DragState';
@@ -285,6 +284,27 @@ const onDrop = async (e: DragEvent) => {
         : props.parentHandle!;
 
     try {
+        // Check for duplicates
+        try {
+            if (dragged.node.kind === 'file') {
+                // @ts-ignore
+                await destinationHandle.getFileHandle(dragged.node.name, { create: false });
+            } else {
+                // @ts-ignore
+                await destinationHandle.getDirectoryHandle(dragged.node.name, { create: false });
+            }
+            // If we get here, it exists
+            alert(`A ${dragged.node.kind} with the name "${dragged.node.name}" already exists in the destination.`);
+            globalDragState.value = null; // Clear state
+            globalDropTargetPath.value = null;
+            return;
+        } catch (e: any) {
+            // NotFoundError means it doesn't exist, which is good.
+            if (e.name !== 'NotFoundError') {
+                throw e; // Rethrow real errors
+            }
+        }
+
         await fileService.moveEntry(
             dragged.parentHandle!,
             dragged.node.name,

@@ -7,12 +7,17 @@ import CogIcon from './icons/CogIcon.vue';
 
 const isCollapsed = ref(true);
 
-defineProps<{
+const props = defineProps<{
     fileTree: FileTreeNode[];
     isRestoring?: boolean;
     activeFileHandle?: FileSystemFileHandle | null;
     rootHandle?: FileSystemDirectoryHandle | null;
 }>();
+
+import { globalDragState, globalDropTargetPath } from '../services/DragState';
+import { fileService } from '../services/FileService';
+
+// ... props ...
 
 const emit = defineEmits<{
     (e: 'open-settings'): void;
@@ -24,6 +29,78 @@ const emit = defineEmits<{
     (e: 'duplicate-item', node: FileTreeNode): void;
     (e: 'file-moved', event: { sourcePath: string; newPath: string }): void;
 }>();
+
+const isDragOver = ref(false);
+
+const onDragOver = (e: DragEvent) => {
+    // Only allow if dragging a file
+    if (!globalDragState.value) return;
+
+    // Check if dragging from somewhere that isn't already root handle
+    // If props.rootHandle is missing, we can't move to root.
+    if (!props.rootHandle) return;
+
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'move';
+    isDragOver.value = true;
+
+    // Clear any specific folder target highlight from FileTree because we are targeting the "empty space" (root)
+    globalDropTargetPath.value = null;
+};
+
+const onDragLeave = () => {
+    isDragOver.value = false;
+};
+
+const onDrop = async (e: DragEvent) => {
+    e.preventDefault();
+    isDragOver.value = false;
+
+    if (!globalDragState.value || !props.rootHandle) return;
+
+    const dragged = globalDragState.value;
+
+    try {
+        // Check for duplicates
+        try {
+            if (dragged.node.kind === 'file') {
+                // @ts-ignore
+                await props.rootHandle.getFileHandle(dragged.node.name, { create: false });
+            } else {
+                // @ts-ignore
+                await props.rootHandle.getDirectoryHandle(dragged.node.name, { create: false });
+            }
+            // If we get here, it exists
+            alert(`A ${dragged.node.kind} with the name "${dragged.node.name}" already exists in the root directory.`);
+            globalDragState.value = null;
+            return;
+        } catch (e: any) {
+            // NotFoundError means it doesn't exist, which is good.
+            if (e.name !== 'NotFoundError') {
+                throw e; // Rethrow real errors
+            }
+        }
+
+        await fileService.moveEntry(
+            dragged.parentHandle!,
+            dragged.node.name,
+            props.rootHandle
+        );
+
+        const sourcePath = dragged.node.path;
+        const newPath = dragged.node.name; // Root path is just name
+
+        if (sourcePath && newPath) {
+            emit('file-moved', { sourcePath, newPath });
+        } else {
+            emit('file-moved', { sourcePath: sourcePath || '', newPath: newPath || '' });
+        }
+    } catch (err) {
+        console.error('Failed to move to root:', err);
+    }
+
+    globalDragState.value = null;
+};
 </script>
 
 <template>
@@ -66,6 +143,12 @@ const emit = defineEmits<{
                     @open-file="emit('open-file', $event)" @toggle-folder="emit('toggle-folder', $event)"
                     @delete="emit('delete-item', $event)" @rename="emit('rename-item', $event)"
                     @duplicate="emit('duplicate-item', $event)" @file-moved="emit('file-moved', $event)" />
+
+                <!-- Drop zone for root (filling remaining space) -->
+                <div class="flex-1 min-h-[50px] transition-colors rounded"
+                    :class="{ 'bg-blue-50 dark:bg-blue-900/10 ring-inset ring-2 ring-blue-500/50': isDragOver }"
+                    @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
+                </div>
             </template>
         </div>
 
