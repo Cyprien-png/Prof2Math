@@ -46,11 +46,34 @@ export class FileService {
         }
     }
 
-    async saveFile(handle: FileSystemFileHandle, content: string): Promise<void> {
+    async saveFile(handle: FileSystemFileHandle, content: string | Blob | BufferSource): Promise<void> {
         // @ts-ignore
         const writable = await handle.createWritable();
         await writable.write(content);
         await writable.close();
+    }
+
+    async getDirectoryHandleByPath(root: FileSystemDirectoryHandle, path: string): Promise<FileSystemDirectoryHandle> {
+        const parts = path.split('/').filter(p => p && p !== '.');
+        let current = root;
+        for (const part of parts) {
+            // @ts-ignore
+            current = await current.getDirectoryHandle(part, { create: true });
+        }
+        return current;
+    }
+
+    async saveAsset(root: FileSystemDirectoryHandle, relativePath: string, content: Blob): Promise<void> {
+        const parts = relativePath.split('/');
+        const fileName = parts.pop();
+        if (!fileName) throw new Error('Invalid path');
+
+        const dirPath = parts.join('/');
+        const dirHandle = await this.getDirectoryHandleByPath(root, dirPath);
+
+        // @ts-ignore
+        const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+        await this.saveFile(fileHandle, content);
     }
 
     async saveFileAs(content: string, suggestedName: string): Promise<{ handle: FileSystemFileHandle, name: string } | null> {
@@ -133,6 +156,20 @@ export class FileService {
     async readFile(handle: FileSystemFileHandle): Promise<string> {
         const file = await handle.getFile();
         return await file.text();
+    }
+
+    async getFileHandleByPath(root: FileSystemDirectoryHandle, path: string): Promise<FileSystemFileHandle> {
+        const parts = path.split('/').filter(p => p && p !== '.');
+        const fileName = parts.pop();
+        if (!fileName) throw new Error('Invalid path');
+
+        let current = root;
+        for (const part of parts) {
+            // @ts-ignore
+            current = await current.getDirectoryHandle(part);
+        }
+        // @ts-ignore
+        return await current.getFileHandle(fileName);
     }
 
     // --- Persistence ---
@@ -221,7 +258,7 @@ export class FileService {
     }
 
     private async copyEntry(
-        sourceParent: FileSystemDirectoryHandle,
+        _sourceParent: FileSystemDirectoryHandle,
         source: FileSystemHandle,
         destParent: FileSystemDirectoryHandle,
         newName?: string

@@ -2,11 +2,14 @@
 import { nextTick, ref, watch, onMounted } from 'vue';
 import type { Block } from '../../types';
 import BlockActionsMenu from './BlockActionsMenu.vue';
+import { fileService } from '../../services/FileService';
 
 const props = defineProps<{
     block: Block;
     index: number;
     activeMenuBlockId: string | null;
+    rootHandle: FileSystemDirectoryHandle | null;
+    currentFilePath: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -20,6 +23,7 @@ const emit = defineEmits<{
     (e: 'input', event: Event): void;
     (e: 'keydown', event: KeyboardEvent, index: number): void;
     (e: 'mouseleave'): void;
+    (e: 'paste', event: ClipboardEvent): void;
 }>();
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
@@ -48,12 +52,55 @@ defineExpose({ focusTextarea });
 watch(() => props.block.isEditing, (newVal) => {
     if (newVal) {
         focusTextarea();
+    } else {
+        nextTick(renderImages);
     }
 });
 
 onMounted(() => {
     if (props.block.isEditing) {
         focusTextarea();
+    } else {
+        renderImages();
+    }
+});
+
+const contentRef = ref<HTMLElement | null>(null);
+const objectUrls = ref<string[]>([]);
+
+const renderImages = async () => {
+    if (!contentRef.value || !props.rootHandle || !props.currentFilePath) return;
+
+    // Cleanup old URLs
+    objectUrls.value.forEach(url => URL.revokeObjectURL(url));
+    objectUrls.value = [];
+
+    const imgs = contentRef.value.querySelectorAll('img');
+    for (const img of Array.from(imgs)) {
+        const src = img.getAttribute('src');
+        // If it's a relative path (not data: or http:)
+        if (src && !src.startsWith('data:') && !src.startsWith('http')) {
+            try {
+                // Resolve path
+                // Simple resolution: relative to current file's directory
+                const fileDir = props.currentFilePath.substring(0, props.currentFilePath.lastIndexOf('/'));
+                const targetPath = fileDir ? `${fileDir}/${src}` : src;
+
+                const fileHandle = await fileService.getFileHandleByPath(props.rootHandle, targetPath);
+                const file = await fileHandle.getFile();
+                const url = URL.createObjectURL(file);
+                objectUrls.value.push(url);
+                img.src = url;
+            } catch (err) {
+                console.error('Failed to load image:', src, err);
+            }
+        }
+    }
+};
+
+watch(() => props.block.html, () => {
+    if (!props.block.isEditing) {
+        nextTick(renderImages);
     }
 });
 
@@ -137,13 +184,14 @@ const onContextMenu = (e: MouseEvent) => {
         </div>
 
         <!-- Preview Mode -->
-        <div v-if="!block.isEditing" @click="emit('edit', index)"
+        <div v-if="!block.isEditing" @click="emit('edit', index)" ref="contentRef"
             class="prose prose-slate dark:prose-invert max-w-none cursor-text px-8 py-4 rounded min-h-[2rem] border border-neutral-200 dark:border-neutral-700"
             v-html="block.html"></div>
 
         <!-- Edit Mode -->
         <textarea v-else ref="textareaRef" :id="`textarea-${index}`" v-model="block.markdown"
-            @blur="emit('save', index)" @input="onInput" @keydown="emit('keydown', $event, index)" rows="1"
+            @blur="emit('save', index)" @input="onInput" @keydown="emit('keydown', $event, index)"
+            @paste="emit('paste', $event)" rows="1"
             class="w-full p-4 bg-transparent font-mono text-base focus:outline-none focus:border-neutral-500 resize-none overflow-hidden block"
             placeholder="Empty block...">
         </textarea>

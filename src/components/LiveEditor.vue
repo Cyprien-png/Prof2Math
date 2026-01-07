@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import type { Block, FileTreeNode } from '../types';
 import EditorBlock from './editor/EditorBlock.vue';
 import TopBar from './TopBar.vue';
@@ -7,6 +7,8 @@ import SideMenu from './SideMenu.vue';
 import SettingsDialog from './SettingsDialog.vue';
 import { fileService } from '../services/FileService';
 import { blockService } from '../services/BlockService';
+import { commandService } from '../services/CommandService';
+import CommandMenu from './editor/CommandMenu.vue';
 
 // --- Props ---
 const props = defineProps<{
@@ -24,6 +26,13 @@ const isHistoryNavigating = ref(false);
 const showSettings = ref(false);
 const autosaveEnabled = ref(false);
 const autosaveTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+
+// Command Menu State
+const showCommandMenu = ref(false);
+const commandMenuPosition = ref<{ x: number, y: number } | undefined>(undefined);
+const commandSuggestions = ref<any[]>([]);
+const commandMenuIndex = ref(0);
+const commandRange = ref<{ start: number, end: number } | null>(null);
 
 // File State
 const fileName = ref('untitled');
@@ -127,7 +136,6 @@ const handleSaveFile = async () => {
             await fileService.saveFile(currentFileHandle.value, content);
             savedContent.value = content;
             checkDirty();
-            console.log(`Saved to ${fileName.value}.mthd`);
         } else {
             // Only 'Save As' if explicit user action? 
             // Autosave shouldn't trigger Save As dialog unexpectedly.
@@ -248,7 +256,33 @@ const promptRenameBlock = (index: number) => {
 };
 
 // Handle special keys passed from child
-const handleKeydown = (e: KeyboardEvent, index: number) => {
+const handleKeydown = async (e: KeyboardEvent, index: number) => {
+    const isCommandKey = e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter' || e.key === 'Escape';
+
+    // Command Menu Navigation
+    if (showCommandMenu.value && isCommandKey) {
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            commandMenuIndex.value = Math.max(0, commandMenuIndex.value - 1);
+            return;
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            commandMenuIndex.value = Math.min(commandSuggestions.value.length - 1, commandMenuIndex.value + 1);
+            return;
+        }
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            executeSelectedCommand(index);
+            return;
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeCommandMenu();
+            return;
+        }
+    }
+
     if (e.key === 'Enter' && e.shiftKey) {
         return;
     }
@@ -257,8 +291,172 @@ const handleKeydown = (e: KeyboardEvent, index: number) => {
         if (e.metaKey || e.ctrlKey) {
             saveBlock(index);
             e.preventDefault();
+        } else {
+            // Check for command
+            const block = blocks.value[index];
+            if (block && commandService.isCommand(block.markdown)) {
+                e.preventDefault(); // Prevent newline
+
+                const result = await commandService.executeCommand(block.markdown, {
+                    rootHandle: rootDirectoryHandle.value,
+                    currentFilePath: currentFilePath.value
+                });
+
+                if (result.success && result.markdown) {
+                    block.markdown = result.markdown;
+                    saveBlock(index);
+                } else if (!result.success && result.message) {
+                    // Show error or just alert for now?
+                    // Or keep text as is?
+                    console.warn(result.message);
+                    if (result.message !== 'Cancelled') {
+                        alert(result.message);
+                    }
+                }
+            }
         }
     }
+};
+
+const closeCommandMenu = () => {
+    showCommandMenu.value = false;
+    commandSuggestions.value = [];
+    commandMenuIndex.value = 0;
+};
+
+const executeSelectedCommand = async (index: number) => {
+    const suggestion = commandSuggestions.value[commandMenuIndex.value];
+    if (!suggestion) return;
+
+    const block = blocks.value[index];
+    if (!block) return;
+
+    const result = await commandService.executeCommand(suggestion.name, {
+        rootHandle: rootDirectoryHandle.value,
+        currentFilePath: currentFilePath.value
+    });
+
+    if (result.success && result.markdown) {
+        if (commandRange.value) {
+            const before = block.markdown.slice(0, commandRange.value.start);
+            const after = block.markdown.slice(commandRange.value.end);
+            block.markdown = before + result.markdown + after;
+        } else {
+            // Fallback
+            block.markdown = result.markdown;
+        }
+        saveBlock(index);
+    }
+
+    closeCommandMenu();
+    // Focus back?
+};
+
+const handlePaste = async (e: ClipboardEvent, index: number) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+        if (item.type.startsWith('image/')) {
+            e.preventDefault();
+
+            if (!rootDirectoryHandle.value || !currentFilePath.value) {
+                alert('Please save the file or open a folder to paste images.');
+                return;
+            }
+
+            const file = item.getAsFile();
+            if (!file) continue;
+
+            const timestamp = new Date().getTime();
+            const ext = file.name.split('.').pop() || 'png';
+            const filename = `pasted_image_${timestamp}.${ext}`;
+
+            // Save relative to current file
+            const fileDir = currentFilePath.value.substring(0, currentFilePath.value.lastIndexOf('/'));
+            const targetPath = fileDir ? `${fileDir}/${filename}` : filename;
+
+            try {
+                await fileService.saveAsset(rootDirectoryHandle.value, targetPath, file);
+
+                const block = blocks.value[index];
+                if (!block) return;
+
+                const cursor = (e.target as HTMLTextAreaElement).selectionStart || block.markdown.length;
+
+                const before = block.markdown.slice(0, cursor);
+                const after = block.markdown.slice(cursor);
+
+                block.markdown = `${before}![${filename}](${filename})${after}`;
+                saveBlock(index);
+
+            } catch (err) {
+                console.error('Failed to paste image:', err);
+                alert('Failed to save pasted image.');
+            }
+            return; // Handle first image only
+        }
+    }
+};
+
+const updateCommandMenu = (index: number, e?: Event) => {
+    nextTick(() => {
+        // Prefer event value if available for immediate feedback
+        let content = blocks.value[index]?.markdown || '';
+        let cursor = 0;
+
+        if (e && e.target instanceof HTMLTextAreaElement) {
+            content = e.target.value;
+            cursor = e.target.selectionStart;
+
+            // Update block model immediately to ensure sync
+            if (blocks.value[index]) {
+                blocks.value[index].markdown = content;
+            }
+        } else {
+            // Fallback if no event field (shouldn't happen with @input)
+            const el = document.getElementById(`textarea-${index}`) as HTMLTextAreaElement;
+            if (el) cursor = el.selectionStart;
+        }
+
+        const block = blocks.value[index];
+        if (!block) return;
+
+        // Find word range before cursor
+        const textBeforeCursor = content.slice(0, cursor);
+        const lastSlashIndex = textBeforeCursor.lastIndexOf('/');
+
+        if (lastSlashIndex !== -1) {
+            const potentialCommand = textBeforeCursor.slice(lastSlashIndex);
+            // Check if it's a valid command part (up to cursor, no spaces)
+            // e.g. "/im" -> valid. "/im age" -> invalid (space)
+            // If there is a space *after* the slash before the cursor, it's not a command being typed
+
+            if (!/\s/.test(potentialCommand)) {
+                const query = potentialCommand;
+                const suggestions = commandService.getSuggestions(query);
+
+                if (suggestions.length > 0) {
+                    commandSuggestions.value = suggestions;
+                    commandMenuIndex.value = 0;
+                    showCommandMenu.value = true;
+                    commandRange.value = { start: lastSlashIndex, end: cursor };
+
+                    const el = document.getElementById(`textarea-${index}`);
+                    if (el) {
+                        const rect = el.getBoundingClientRect();
+                        commandMenuPosition.value = {
+                            x: rect.left, // Can optimize to be near cursor but block left is ok for now
+                            y: rect.top
+                        };
+                    }
+                    return;
+                }
+            }
+        }
+
+        closeCommandMenu();
+    });
 };
 
 // Global Keyboard Shortcuts
@@ -550,10 +748,12 @@ const handleFileMoved = async (event: { sourcePath: string, newPath: string }) =
                 <div class="max-w-3xl mx-auto py-12 px-6">
                     <div class="space-y-4">
                         <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
-                            :active-menu-block-id="activeMenuBlockId" @update:block="saveBlock(index)"
-                            @input="triggerAutosave" @save="saveBlock(index)" @menu-toggle="toggleMenu"
-                            @duplicate="duplicateBlock(index)" @remove="removeBlock(index)" @edit="editBlock(index)"
-                            @rename="promptRenameBlock(index)" @keydown="handleKeydown($event, index)" />
+                            :active-menu-block-id="activeMenuBlockId" :root-handle="rootDirectoryHandle"
+                            :current-file-path="currentFilePath" @update:block="saveBlock(index)"
+                            @input="triggerAutosave(); updateCommandMenu(index, $event);" @save="saveBlock(index)"
+                            @menu-toggle="toggleMenu" @duplicate="duplicateBlock(index)" @remove="removeBlock(index)"
+                            @edit="editBlock(index)" @rename="promptRenameBlock(index)"
+                            @keydown="handleKeydown($event, index)" @paste="handlePaste($event, index)" />
 
                         <!-- Add New Block Area -->
                         <div @click="addNextBlock"
@@ -569,6 +769,10 @@ const handleFileMoved = async (event: { sourcePath: string, newPath: string }) =
         <SettingsDialog :is-open="showSettings" :current-directory="rootDirectoryHandle?.name"
             @close="showSettings = false" @set-root-directory="handleSetRootDirectory" />
     </div>
+
+    <CommandMenu :items="commandSuggestions" :selected-index="commandMenuIndex" :position="commandMenuPosition"
+        @select="(i) => { commandMenuIndex = i; executeSelectedCommand(blocks.findIndex(b => b.isEditing)); }"
+        v-if="showCommandMenu" />
 </template>
 
 <style>
