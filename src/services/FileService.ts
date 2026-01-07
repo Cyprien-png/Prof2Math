@@ -167,6 +167,59 @@ export class FileService {
         // @ts-ignore
         await parentHandle.removeEntry(name, { recursive: true });
     }
+
+    async renameEntry(parentHandle: FileSystemDirectoryHandle, oldName: string, newName: string, kind: 'file' | 'directory'): Promise<void> {
+        // 1. Get source handle
+        // @ts-ignore
+        const sourceHandle = kind === 'file'
+            // @ts-ignore
+            ? await parentHandle.getFileHandle(oldName)
+            // @ts-ignore
+            : await parentHandle.getDirectoryHandle(oldName);
+
+        // 2. Perform copy
+        await this.copyEntry(parentHandle, sourceHandle, parentHandle, newName);
+
+        // 3. Delete original
+        // @ts-ignore
+        await parentHandle.removeEntry(oldName, { recursive: true });
+    }
+
+    async duplicateEntry(parentHandle: FileSystemDirectoryHandle, name: string): Promise<void> {
+        // @ts-ignore
+        const sourceHandle = await parentHandle.getFileHandle(name);
+        const newName = `${name.replace(/\.mthd$/, '')} copy.mthd`;
+        await this.copyEntry(parentHandle, sourceHandle, parentHandle, newName);
+    }
+
+    private async copyEntry(
+        sourceParent: FileSystemDirectoryHandle,
+        source: FileSystemHandle,
+        destParent: FileSystemDirectoryHandle,
+        newName?: string
+    ): Promise<void> {
+        const name = newName || source.name;
+
+        if (source.kind === 'file') {
+            // @ts-ignore
+            const sourceFile = await (source as FileSystemFileHandle).getFile();
+            // @ts-ignore
+            const destFileHandle = await destParent.getFileHandle(name, { create: true });
+            // @ts-ignore
+            const writable = await destFileHandle.createWritable();
+            await writable.write(await sourceFile.text());
+            await writable.close();
+        } else if (source.kind === 'directory') {
+            // @ts-ignore
+            const destDirHandle = await destParent.getDirectoryHandle(name, { create: true });
+            // @ts-ignore
+            const sourceDirHandle = source as FileSystemDirectoryHandle;
+            // @ts-ignore
+            for await (const entry of sourceDirHandle.values()) {
+                await this.copyEntry(sourceDirHandle, entry, destDirHandle);
+            }
+        }
+    }
 }
 
 export const fileService = new FileService();

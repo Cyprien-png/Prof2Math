@@ -345,6 +345,45 @@ const handleDeleteRootItem = async (node: FileTreeNode) => {
     }
 };
 
+const handleRenameRootItem = async (node: FileTreeNode) => {
+    if (!rootDirectoryHandle.value) return;
+
+    const currentName = node.name;
+    const editableName = node.kind === 'file' ? currentName.replace(/\.mthd$/, '') : currentName;
+
+    const newNameInput = prompt('Enter new name:', editableName);
+    if (!newNameInput || newNameInput === editableName) return;
+
+    const newName = node.kind === 'file' ? `${newNameInput}.mthd` : newNameInput;
+
+    try {
+        await fileService.renameEntry(
+            rootDirectoryHandle.value,
+            node.name,
+            newName,
+            node.kind
+        );
+        // Refresh entire tree
+        fileTree.value = await fileService.readDirectory(rootDirectoryHandle.value);
+    } catch (err) {
+        console.error('Failed to rename root entry:', err);
+        alert(`Failed to rename: ${err}`);
+    }
+};
+
+const handleDuplicateRootItem = async (node: FileTreeNode) => {
+    if (!rootDirectoryHandle.value) return;
+
+    try {
+        await fileService.duplicateEntry(rootDirectoryHandle.value, node.name);
+        // Refresh entire tree
+        fileTree.value = await fileService.readDirectory(rootDirectoryHandle.value);
+    } catch (err) {
+        console.error('Failed to duplicate root entry:', err);
+        alert(`Failed to duplicate: ${err}`);
+    }
+};
+
 </script>
 
 <template>
@@ -354,7 +393,8 @@ const handleDeleteRootItem = async (node: FileTreeNode) => {
         <SideMenu :file-tree="fileTree" :is-restoring="isRestoringPermission" @open-settings="showSettings = true"
             :active-file-handle="currentFileHandle" @open-file="handleOpenFileFromTree"
             @toggle-folder="handleToggleFolder" @restore-access="handleRestoreAccess"
-            @delete-item="handleDeleteRootItem" />
+            @delete-item="handleDeleteRootItem" @rename-item="handleRenameRootItem"
+            @duplicate-item="handleDuplicateRootItem" />
 
         <!-- Main Content (Flex Column) -->
         <div class="flex-1 flex flex-col min-w-0 relative">

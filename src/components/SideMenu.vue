@@ -19,6 +19,8 @@ const emit = defineEmits<{
     (e: 'toggle-folder', node: FileTreeNode): void;
     (e: 'restore-access'): void;
     (e: 'delete-item', node: FileTreeNode): void;
+    (e: 'rename-item', node: FileTreeNode): void;
+    (e: 'duplicate-item', node: FileTreeNode): void;
 }>();
 </script>
 
@@ -59,7 +61,8 @@ const emit = defineEmits<{
 
                 <FileTree v-else v-for="node in fileTree" :key="node.name" :node="node"
                     :active-file-handle="activeFileHandle" @open-file="emit('open-file', $event)"
-                    @toggle-folder="emit('toggle-folder', $event)" @delete="emit('delete-item', $event)" />
+                    @toggle-folder="emit('toggle-folder', $event)" @delete="emit('delete-item', $event)"
+                    @rename="emit('rename-item', $event)" @duplicate="emit('duplicate-item', $event)" />
             </template>
         </div>
 
