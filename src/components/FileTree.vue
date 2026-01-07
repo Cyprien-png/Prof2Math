@@ -159,6 +159,9 @@ const onChildAction = async (action: 'delete' | 'rename' | 'duplicate', childNod
         }
     }
 };
+const displayName = computed(() => {
+    return props.node.kind === 'file' ? props.node.name.replace(/\.mthd$/, '') : props.node.name;
+});
 </script>
 
 <template>
@@ -189,7 +192,7 @@ const onChildAction = async (action: 'delete' | 'rename' | 'duplicate', childNod
                 </template>
             </span>
 
-            <span class="truncate">{{ node.name }}</span>
+            <span class="truncate">{{ displayName }}</span>
 
             <!-- Actions -->
             <button @click="handleMenuToggle" ref="menuRef"
