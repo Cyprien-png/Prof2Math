@@ -192,6 +192,31 @@ export class FileService {
         await this.copyEntry(parentHandle, sourceHandle, parentHandle, newName);
     }
 
+    async moveEntry(sourceParent: FileSystemDirectoryHandle, sourceName: string, destParent: FileSystemDirectoryHandle): Promise<void> {
+        // 1. Get source handle
+        // We don't know if it's a file or directory easily without checking, or we can try both.
+        // Actually, we can just iterate sourceParent to find it and get the handle + kind.
+        let sourceHandle: FileSystemHandle | null = null;
+        // @ts-ignore
+        for await (const entry of sourceParent.values()) {
+            if (entry.name === sourceName) {
+                sourceHandle = entry;
+                break;
+            }
+        }
+
+        if (!sourceHandle) {
+            throw new Error(`Source entry "${sourceName}" not found.`);
+        }
+
+        // 2. Copy to destination
+        await this.copyEntry(sourceParent, sourceHandle, destParent);
+
+        // 3. Delete from source
+        // @ts-ignore
+        await sourceParent.removeEntry(sourceName, { recursive: true });
+    }
+
     private async copyEntry(
         sourceParent: FileSystemDirectoryHandle,
         source: FileSystemHandle,

@@ -4,11 +4,13 @@ import type { FileTreeNode } from '../types';
 import FileIcon from './icons/FileIcon.vue';
 import EllipsisIcon from './icons/EllipsisIcon.vue';
 import { fileService } from '../services/FileService';
+import { globalDragState } from '../services/DragState';
 
 const props = defineProps<{
     node: FileTreeNode;
     depth?: number;
     activeFileHandle?: FileSystemFileHandle | null;
+    parentHandle?: FileSystemDirectoryHandle;
 }>();
 
 const emit = defineEmits<{
@@ -17,7 +19,10 @@ const emit = defineEmits<{
     (e: 'delete', node: FileTreeNode): void;
     (e: 'rename', node: FileTreeNode): void;
     (e: 'duplicate', node: FileTreeNode): void;
+    (e: 'file-moved'): void;
 }>();
+
+
 
 const currentDepth = computed(() => props.depth || 0);
 const isActive = ref(false);
@@ -159,6 +164,75 @@ const onChildAction = async (action: 'delete' | 'rename' | 'duplicate', childNod
         }
     }
 };
+const onDragStart = (e: DragEvent) => {
+    e.stopPropagation();
+    if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        globalDragState.value = { node: props.node, parentHandle: props.parentHandle };
+    }
+};
+
+const isDragOver = ref(false);
+
+const checkDropValidity = () => {
+    if (props.node.kind !== 'directory') return false;
+    const dragged = globalDragState.value;
+    if (!dragged || !dragged.parentHandle) return false;
+    if (dragged.node === props.node) return false;
+    // Add other checks if needed (e.g. parent/child circular)
+    return true;
+};
+
+const onDragEnter = (e: DragEvent) => {
+    if (checkDropValidity()) {
+        isDragOver.value = true;
+    }
+};
+
+const onDragLeave = (e: DragEvent) => {
+    isDragOver.value = false;
+};
+
+const onDragOver = (e: DragEvent) => {
+    if (isDragOver.value) { // Optimized: rely on dragenter having done the check? No, dragover needs preventDefault.
+        // Re-check validity or trust state?
+        // Safer to re-check or duplicate minimal logic to ensure drop is allowed.
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = 'move';
+    } else {
+        // Fallback if dragenter didn't fire for some reason or logic mismatch
+        if (checkDropValidity()) {
+            e.preventDefault();
+            e.dataTransfer!.dropEffect = 'move';
+            isDragOver.value = true; // Ensure visual matches
+        }
+    }
+};
+
+const onDrop = async (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isDragOver.value = false;
+
+    if (!checkDropValidity()) return;
+
+    const dragged = globalDragState.value!; // Checked in validity
+
+    try {
+        await fileService.moveEntry(
+            dragged.parentHandle!,
+            dragged.node.name,
+            props.node.handle as FileSystemDirectoryHandle
+        );
+        emit('file-moved');
+        // Clear state
+        globalDragState.value = null;
+    } catch (err) {
+        console.error('Failed to move file:', err);
+        alert(`Failed to move file: ${err}`);
+    }
+};
+
 const displayName = computed(() => {
     return props.node.kind === 'file' ? props.node.name.replace(/\.mthd$/, '') : props.node.name;
 });
@@ -168,8 +242,11 @@ const displayName = computed(() => {
     <div class="select-none text-sm font-medium">
         <div @click="handleClick"
             class="group/row flex items-center py-1 px-2 cursor-pointer rounded transition-colors truncate relative"
-            :class="isActive ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'"
-            :style="{ paddingLeft: `${currentDepth * 12 + 8}px` }">
+            :class="[
+                isActive ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800',
+                isDragOver ? 'bg-blue-200 dark:bg-blue-800' : ''
+            ]" :style="{ paddingLeft: `${currentDepth * 12 + 8}px` }" draggable="true" @dragstart="onDragStart"
+            @dragenter="onDragEnter" @dragleave="onDragLeave" @dragover="onDragOver" @drop="onDrop">
 
             <!-- Icon -->
             <span class="mr-2" :class="isActive ? 'text-blue-500 dark:text-blue-400' : 'text-neutral-400'">
@@ -232,9 +309,10 @@ const displayName = computed(() => {
         <!-- Children -->
         <div v-if="node.kind === 'directory' && node.isOpen">
             <FileTree v-for="child in node.children" :key="child.name" :node="child" :depth="currentDepth + 1"
-                :active-file-handle="activeFileHandle" @open-file="$emit('open-file', $event)"
-                @toggle-folder="$emit('toggle-folder', $event)" @delete="onChildAction('delete', $event)"
-                @rename="onChildAction('rename', $event)" @duplicate="onChildAction('duplicate', $event)" />
+                :active-file-handle="activeFileHandle" :parent-handle="node.handle as FileSystemDirectoryHandle"
+                @open-file="$emit('open-file', $event)" @toggle-folder="$emit('toggle-folder', $event)"
+                @delete="onChildAction('delete', $event)" @rename="onChildAction('rename', $event)"
+                @duplicate="onChildAction('duplicate', $event)" @file-moved="$emit('file-moved')" />
         </div>
     </div>
 </template>

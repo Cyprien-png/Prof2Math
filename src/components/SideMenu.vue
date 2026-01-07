@@ -11,6 +11,7 @@ defineProps<{
     fileTree: FileTreeNode[];
     isRestoring?: boolean;
     activeFileHandle?: FileSystemFileHandle | null;
+    rootHandle?: FileSystemDirectoryHandle | null;
 }>();
 
 const emit = defineEmits<{
@@ -21,6 +22,7 @@ const emit = defineEmits<{
     (e: 'delete-item', node: FileTreeNode): void;
     (e: 'rename-item', node: FileTreeNode): void;
     (e: 'duplicate-item', node: FileTreeNode): void;
+    (e: 'file-moved'): void;
 }>();
 </script>
 
@@ -60,9 +62,10 @@ const emit = defineEmits<{
                 </div>
 
                 <FileTree v-else v-for="node in fileTree" :key="node.name" :node="node"
-                    :active-file-handle="activeFileHandle" @open-file="emit('open-file', $event)"
-                    @toggle-folder="emit('toggle-folder', $event)" @delete="emit('delete-item', $event)"
-                    @rename="emit('rename-item', $event)" @duplicate="emit('duplicate-item', $event)" />
+                    :active-file-handle="activeFileHandle" :parent-handle="rootHandle || undefined"
+                    @open-file="emit('open-file', $event)" @toggle-folder="emit('toggle-folder', $event)"
+                    @delete="emit('delete-item', $event)" @rename="emit('rename-item', $event)"
+                    @duplicate="emit('duplicate-item', $event)" @file-moved="emit('file-moved')" />
             </template>
         </div>
 

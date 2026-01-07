@@ -384,6 +384,14 @@ const handleDuplicateRootItem = async (node: FileTreeNode) => {
     }
 };
 
+
+
+const handleFileMoved = async () => {
+    if (rootDirectoryHandle.value) {
+        fileTree.value = await fileService.readDirectory(rootDirectoryHandle.value);
+    }
+};
+
 </script>
 
 <template>
@@ -391,10 +399,11 @@ const handleDuplicateRootItem = async (node: FileTreeNode) => {
         class="flex h-screen w-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans overflow-hidden">
         <!-- Sidebar -->
         <SideMenu :file-tree="fileTree" :is-restoring="isRestoringPermission" @open-settings="showSettings = true"
-            :active-file-handle="currentFileHandle" @open-file="handleOpenFileFromTree"
-            @toggle-folder="handleToggleFolder" @restore-access="handleRestoreAccess"
-            @delete-item="handleDeleteRootItem" @rename-item="handleRenameRootItem"
-            @duplicate-item="handleDuplicateRootItem" />
+            :active-file-handle="currentFileHandle" :root-handle="rootDirectoryHandle"
+            @open-file="handleOpenFileFromTree" @toggle-folder="handleToggleFolder"
+            @restore-access="handleRestoreAccess" @delete-item="handleDeleteRootItem"
+            @rename-item="handleRenameRootItem" @duplicate-item="handleDuplicateRootItem"
+            @file-moved="handleFileMoved" />
 
         <!-- Main Content (Flex Column) -->
         <div class="flex-1 flex flex-col min-w-0 relative">
