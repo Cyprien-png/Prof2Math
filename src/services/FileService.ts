@@ -162,6 +162,11 @@ export class FileService {
         }
         return false;
     }
+
+    async deleteEntry(parentHandle: FileSystemDirectoryHandle, name: string): Promise<void> {
+        // @ts-ignore
+        await parentHandle.removeEntry(name, { recursive: true });
+    }
 }
 
 export const fileService = new FileService();

@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue';
 import type { FileTreeNode } from '../types';
 import FileIcon from './icons/FileIcon.vue';
+import TrashIcon from './icons/TrashIcon.vue';
+import { fileService } from '../services/FileService';
 
 const props = defineProps<{
     node: FileTreeNode;
@@ -12,6 +14,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     (e: 'open-file', handle: FileSystemFileHandle): void;
     (e: 'toggle-folder', node: FileTreeNode): void;
+    (e: 'delete', node: FileTreeNode): void;
 }>();
 
 const currentDepth = computed(() => props.depth || 0);
@@ -42,11 +45,35 @@ const handleClick = () => {
         emit('open-file', props.node.handle as FileSystemFileHandle);
     }
 };
+
+const handleDeleteClick = (e: Event) => {
+    e.stopPropagation();
+    emit('delete', props.node);
+};
+
+const onChildDelete = async (childNode: FileTreeNode) => {
+    if (!confirm(`Are you sure you want to delete "${childNode.name}"?`)) {
+        return;
+    }
+
+    try {
+        await fileService.deleteEntry(props.node.handle as FileSystemDirectoryHandle, childNode.name);
+        // Remove from local list
+        const idx = props.node.children?.findIndex(c => c.name === childNode.name);
+        if (idx !== undefined && idx !== -1) {
+            props.node.children?.splice(idx, 1);
+        }
+    } catch (err) {
+        console.error('Failed to delete entry:', err);
+        alert('Failed to delete item.');
+    }
+};
 </script>
 
 <template>
-    <div class="select-none text-sm">
-        <div @click="handleClick" class="flex items-center py-1 px-2 cursor-pointer rounded transition-colors truncate"
+    <div class="select-none text-sm font-medium">
+        <div @click="handleClick"
+            class="group/row flex items-center py-1 px-2 cursor-pointer rounded transition-colors truncate relative"
             :class="isActive ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'"
             :style="{ paddingLeft: `${currentDepth * 12 + 8}px` }">
 
@@ -72,13 +99,20 @@ const handleClick = () => {
             </span>
 
             <span class="truncate">{{ node.name }}</span>
+
+            <!-- Actions -->
+            <button @click="handleDeleteClick"
+                class="ml-auto p-1 text-neutral-400 hover:text-red-500 opacity-0 group-hover/row:opacity-100 transition-all"
+                title="Delete">
+                <TrashIcon class="size-4" />
+            </button>
         </div>
 
         <!-- Children -->
         <div v-if="node.kind === 'directory' && node.isOpen">
             <FileTree v-for="child in node.children" :key="child.name" :node="child" :depth="currentDepth + 1"
                 :active-file-handle="activeFileHandle" @open-file="$emit('open-file', $event)"
-                @toggle-folder="$emit('toggle-folder', $event)" />
+                @toggle-folder="$emit('toggle-folder', $event)" @delete="onChildDelete" />
         </div>
     </div>
 </template>

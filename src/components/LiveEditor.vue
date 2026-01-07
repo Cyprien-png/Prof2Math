@@ -325,6 +325,26 @@ const toggleMenu = (id: string | null) => {
     activeMenuBlockId.value = id;
 }
 
+const handleDeleteRootItem = async (node: FileTreeNode) => {
+    if (!rootDirectoryHandle.value) return;
+
+    if (!confirm(`Are you sure you want to delete "${node.name}"?`)) {
+        return;
+    }
+
+    try {
+        await fileService.deleteEntry(rootDirectoryHandle.value, node.name);
+        // Remove from local list
+        const idx = fileTree.value.findIndex(c => c.name === node.name);
+        if (idx !== -1) {
+            fileTree.value.splice(idx, 1);
+        }
+    } catch (err) {
+        console.error('Failed to delete root entry:', err);
+        alert('Failed to delete item.');
+    }
+};
+
 </script>
 
 <template>
@@ -333,7 +353,8 @@ const toggleMenu = (id: string | null) => {
         <!-- Sidebar -->
         <SideMenu :file-tree="fileTree" :is-restoring="isRestoringPermission" @open-settings="showSettings = true"
             :active-file-handle="currentFileHandle" @open-file="handleOpenFileFromTree"
-            @toggle-folder="handleToggleFolder" @restore-access="handleRestoreAccess" />
+            @toggle-folder="handleToggleFolder" @restore-access="handleRestoreAccess"
+            @delete-item="handleDeleteRootItem" />
 
         <!-- Main Content (Flex Column) -->
         <div class="flex-1 flex flex-col min-w-0 relative">

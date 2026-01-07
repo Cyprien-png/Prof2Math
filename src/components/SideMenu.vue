@@ -18,6 +18,7 @@ const emit = defineEmits<{
     (e: 'open-file', handle: FileSystemFileHandle): void;
     (e: 'toggle-folder', node: FileTreeNode): void;
     (e: 'restore-access'): void;
+    (e: 'delete-item', node: FileTreeNode): void;
 }>();
 </script>
 
@@ -58,7 +59,7 @@ const emit = defineEmits<{
 
                 <FileTree v-else v-for="node in fileTree" :key="node.name" :node="node"
                     :active-file-handle="activeFileHandle" @open-file="emit('open-file', $event)"
-                    @toggle-folder="emit('toggle-folder', $event)" />
+                    @toggle-folder="emit('toggle-folder', $event)" @delete="emit('delete-item', $event)" />
             </template>
         </div>
 
