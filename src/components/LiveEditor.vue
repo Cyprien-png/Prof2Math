@@ -332,8 +332,8 @@ const toggleMenu = (id: string | null) => {
         class="flex h-screen w-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans overflow-hidden">
         <!-- Sidebar -->
         <SideMenu :file-tree="fileTree" :is-restoring="isRestoringPermission" @open-settings="showSettings = true"
-            @open-file="handleOpenFileFromTree" @toggle-folder="handleToggleFolder"
-            @restore-access="handleRestoreAccess" />
+            :active-file-handle="currentFileHandle" @open-file="handleOpenFileFromTree"
+            @toggle-folder="handleToggleFolder" @restore-access="handleRestoreAccess" />
 
         <!-- Main Content (Flex Column) -->
         <div class="flex-1 flex flex-col min-w-0 relative">

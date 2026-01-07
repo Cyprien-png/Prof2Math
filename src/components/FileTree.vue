@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { FileTreeNode } from '../types';
 import FileIcon from './icons/FileIcon.vue';
 
 const props = defineProps<{
     node: FileTreeNode;
     depth?: number;
+    activeFileHandle?: FileSystemFileHandle | null;
 }>();
 
 const emit = defineEmits<{
@@ -14,6 +15,24 @@ const emit = defineEmits<{
 }>();
 
 const currentDepth = computed(() => props.depth || 0);
+const isActive = ref(false);
+
+watch(() => [props.node, props.activeFileHandle], async () => {
+    if (props.node.kind === 'file' && props.activeFileHandle) {
+        if (props.node.name === props.activeFileHandle.name) {
+            try {
+                isActive.value = await (props.node.handle as FileSystemFileHandle).isSameEntry(props.activeFileHandle);
+            } catch (e) {
+                // Fallback or error (e.g. permission lost)
+                isActive.value = false;
+            }
+        } else {
+            isActive.value = false;
+        }
+    } else {
+        isActive.value = false;
+    }
+}, { immediate: true });
 
 const handleClick = () => {
     if (props.node.kind === 'directory') {
@@ -27,12 +46,12 @@ const handleClick = () => {
 
 <template>
     <div class="select-none text-sm">
-        <div @click="handleClick"
-            class="flex items-center py-1 px-2 cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded transition-colors truncate"
+        <div @click="handleClick" class="flex items-center py-1 px-2 cursor-pointer rounded transition-colors truncate"
+            :class="isActive ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'"
             :style="{ paddingLeft: `${currentDepth * 12 + 8}px` }">
 
             <!-- Icon -->
-            <span class="mr-2 text-neutral-400">
+            <span class="mr-2" :class="isActive ? 'text-blue-500 dark:text-blue-400' : 'text-neutral-400'">
                 <template v-if="node.kind === 'directory'">
                     <svg v-if="node.isOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
                         class="size-4">
@@ -58,7 +77,8 @@ const handleClick = () => {
         <!-- Children -->
         <div v-if="node.kind === 'directory' && node.isOpen">
             <FileTree v-for="child in node.children" :key="child.name" :node="child" :depth="currentDepth + 1"
-                @open-file="$emit('open-file', $event)" @toggle-folder="$emit('toggle-folder', $event)" />
+                :active-file-handle="activeFileHandle" @open-file="$emit('open-file', $event)"
+                @toggle-folder="$emit('toggle-folder', $event)" />
         </div>
     </div>
 </template>
