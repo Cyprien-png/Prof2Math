@@ -779,11 +779,25 @@ const handleFileMoved = async (event: { sourcePath: string, newPath: string }) =
     await loadDirectory();
 
     // Check if we need to reopen the moved file
-    if (currentFilePath.value && currentFilePath.value === event.sourcePath) {
-        const newNode = findNodeByPath(fileTree.value, event.newPath);
-        if (newNode) {
-            currentFileHandle.value = newNode.handle as FileSystemFileHandle;
-            currentFilePath.value = newNode.path || null;
+    // Check if we need to reopen the moved file
+    if (currentFilePath.value) {
+        let newCurrentPath: string | null = null;
+
+        // Case 1: The file itself was moved
+        if (currentFilePath.value === event.sourcePath) {
+            newCurrentPath = event.newPath;
+        }
+        // Case 2: A parent directory was moved
+        else if (currentFilePath.value.startsWith(event.sourcePath + '/')) {
+            newCurrentPath = event.newPath + currentFilePath.value.substring(event.sourcePath.length);
+        }
+
+        if (newCurrentPath) {
+            const newNode = findNodeByPath(fileTree.value, newCurrentPath);
+            if (newNode) {
+                currentFileHandle.value = newNode.handle as FileSystemFileHandle;
+                currentFilePath.value = newNode.path || null;
+            }
         }
     }
 };

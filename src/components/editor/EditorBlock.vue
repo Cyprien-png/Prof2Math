@@ -173,7 +173,7 @@ const onContextMenu = (e: MouseEvent) => {
 
 <template>
     <div class="relative group rounded-md transition-all duration-200"
-        :class="{ 'bg-blue-50/10': block.isEditing, 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50 block-hover-effect': !block.isEditing }"
+        :class="{ 'dark:bg-neutral-50/10 bg-neutral-400/10': block.isEditing, 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50 block-hover-effect': !block.isEditing }"
         @mouseleave="emit('mouseleave')" @contextmenu="onContextMenu">
 
         <!-- Block Name Label -->
