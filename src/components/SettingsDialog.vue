@@ -116,7 +116,7 @@ onMounted(() => {
                             <span class="text-neutral-700 dark:text-neutral-300 font-medium">Dark Mode</span>
                             <button @click="toggleDark"
                                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                :class="isDark ? 'bg-blue-600' : 'bg-neutral-200'">
+                                :class="isDark ? 'bg-blue-600' : 'bg-neutral-200 dark:bg-neutral-400'">
                                 <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
                                     :class="isDark ? 'translate-x-6' : 'translate-x-1'" />
                             </button>
@@ -125,13 +125,10 @@ onMounted(() => {
                         <div class="flex items-center justify-between">
                             <div class="flex flex-col">
                                 <span class="text-neutral-700 dark:text-neutral-300 font-medium">Autosave</span>
-                                <span class="text-xs text-neutral-500 dark:text-neutral-400">
-                                    Automatically save when leaving editor, switching files, or after 3s of inactivity.
-                                </span>
                             </div>
                             <button @click="toggleAutosave"
                                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                :class="autosaveEnabled ? 'bg-blue-600' : 'bg-neutral-200'">
+                                :class="autosaveEnabled ? 'bg-blue-600' : 'bg-neutral-200 dark:bg-neutral-400'">
                                 <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
                                     :class="autosaveEnabled ? 'translate-x-6' : 'translate-x-1'" />
                             </button>
