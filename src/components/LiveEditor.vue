@@ -56,7 +56,7 @@ const pushHistory = () => {
         history.value.shift();
         historyIndex.value--;
     }
-    // History Pushed log removed
+    // console.log(`History Pushed: Index ${historyIndex.value}, Length ${history.value.length}`);
 };
 
 const undo = () => {
@@ -68,7 +68,7 @@ const undo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
-        // Undo log removed
+        // console.log(`Undo: Index ${historyIndex.value}`);
     }
 };
 
@@ -81,7 +81,7 @@ const redo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
-        // Redo log removed
+        // console.log(`Redo: Index ${historyIndex.value}`);
     }
 };
 
@@ -127,7 +127,7 @@ const handleSaveFile = async () => {
             await fileService.saveFile(currentFileHandle.value, content);
             savedContent.value = content;
             checkDirty();
-
+            console.log(`Saved to ${fileName.value}.mthd`);
         } else {
             const result = await fileService.saveFileAs(content, fileName.value);
             if (result) {
@@ -142,22 +142,7 @@ const handleSaveFile = async () => {
     }
 };
 
-const handleOpenFile = async () => {
-    const result = await fileService.openFile();
-    if (result) {
-        currentFileHandle.value = result.handle;
-        fileName.value = result.name;
-        blocks.value = blockService.parseBlocks(result.content);
 
-        // Reset History & State
-        history.value = [];
-        historyIndex.value = -1;
-        pushHistory();
-        pushHistory();
-        savedContent.value = blockService.serializeBlocks(blocks.value); // Normalize saved state to match serialization
-        checkDirty();
-    }
-};
 
 const editBlock = (index: number) => {
     blocks.value.forEach((b, i) => {
@@ -370,7 +355,7 @@ const handleOpenFileFromTree = async (node: FileTreeNode) => {
         savedContent.value = blockService.serializeBlocks(blocks.value);
         checkDirty();
 
-
+        console.log(`Opened file from tree: ${fileName.value} (${currentFilePath.value})`);
     } catch (err) {
         console.error('Failed to open file from tree:', err);
         alert('Failed to open file');

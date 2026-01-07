@@ -31,7 +31,7 @@ import { activeMenuPath } from '../services/MenuState';
 const currentDepth = computed(() => props.depth || 0);
 const isActive = ref(false);
 const showMenu = computed(() => !!props.node.path && activeMenuPath.value === props.node.path);
-const menuRef = ref<HTMLElement | null>(null);
+
 
 watch(() => [props.node, props.activeFileHandle], async () => {
     // ... existing isActive logic ... 
@@ -65,10 +65,10 @@ const handleMenuToggle = (e: Event) => {
 
     if (!showMenu.value) {
         // Opening
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const mouseEvent = e as MouseEvent;
         menuPosition.value = {
-            x: rect.right - 128, // Align right (w-32 is 128px)
-            y: rect.bottom + 4
+            x: mouseEvent.clientX - 10,
+            y: mouseEvent.clientY - 10
         };
         activeMenuPath.value = props.node.path || null;
     } else {
@@ -337,6 +337,38 @@ const onDrop = async (e: DragEvent) => {
     }
 };
 
+const handleContextMenu = (e: MouseEvent) => {
+    // Prevent browser menu
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Position at mouse cursor (slightly offset)
+    menuPosition.value = {
+        x: e.clientX - 10,
+        y: e.clientY - 10
+    };
+
+    // Open menu
+    activeMenuPath.value = props.node.path || null;
+};
+
+const menuTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+
+const onMenuMouseEnter = () => {
+    if (menuTimeout.value) {
+        clearTimeout(menuTimeout.value);
+        menuTimeout.value = null;
+    }
+};
+
+const onMenuMouseLeave = () => {
+    menuTimeout.value = setTimeout(() => {
+        if (activeMenuPath.value === props.node.path) {
+            activeMenuPath.value = null;
+        }
+    }, 10);
+};
+
 const displayName = computed(() => {
     return props.node.kind === 'file' ? props.node.name.replace(/\.mthd$/, '') : props.node.name;
 });
@@ -344,10 +376,10 @@ const displayName = computed(() => {
 
 <template>
     <div class="select-none text-sm font-medium rounded">
-        <div @click="handleClick"
+        <div @click="handleClick" @contextmenu="handleContextMenu"
             class="group/row flex items-center py-1 px-2 cursor-pointer rounded transition-colors truncate relative"
             :class="[
-                isActive ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800',
+                isActive ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : (showMenu ? 'bg-neutral-200 dark:bg-neutral-800' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'),
                 isDragOver ? 'bg-blue-200 dark:bg-blue-800 rounded-none' : ''
             ]" :style="{ paddingLeft: `${currentDepth * 12 + 8}px` }" draggable="true" @dragstart="onDragStart"
             @dragenter="onDragEnter" @dragleave="onDragLeave" @dragover="onDragOver" @drop="onDrop"
@@ -377,7 +409,7 @@ const displayName = computed(() => {
             <span class="truncate">{{ displayName }}</span>
 
             <!-- Actions -->
-            <button @click="handleMenuToggle" ref="menuRef"
+            <button @click="handleMenuToggle"
                 class="ml-auto p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 opacity-0 group-hover/row:opacity-100 transition-all rounded"
                 :class="{ 'opacity-100 bg-neutral-200 dark:bg-neutral-800': showMenu }" title="More actions">
                 <EllipsisIcon class="size-4" />
@@ -387,7 +419,8 @@ const displayName = computed(() => {
             <Teleport to="body">
                 <div v-if="showMenu"
                     class="fixed w-32 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md shadow-lg z-[9999] py-1"
-                    :style="{ left: `${menuPosition.x}px`, top: `${menuPosition.y}px` }" @click.stop>
+                    :style="{ left: `${menuPosition.x}px`, top: `${menuPosition.y}px` }" @click.stop
+                    @mouseenter="onMenuMouseEnter" @mouseleave="onMenuMouseLeave">
 
 
 
