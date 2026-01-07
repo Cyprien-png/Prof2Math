@@ -75,12 +75,53 @@ const onInput = (e: Event) => {
     emit('input', e);
 };
 
+// Menu Logic
+const menuPosition = ref<{ x: number, y: number } | undefined>(undefined);
+const menuTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+
+const onMenuToggle = (e: MouseEvent) => {
+    e.stopPropagation();
+
+    // Toggle logic is handled by parent (id state), but we need to supply position
+    if (props.activeMenuBlockId !== props.block.id) {
+        // Opening
+        menuPosition.value = {
+            x: e.clientX - 10,
+            y: e.clientY - 10
+        };
+        emit('menu-toggle', props.block.id);
+    } else {
+        // Closing
+        emit('menu-toggle', null);
+    }
+};
+
+const onMenuMouseEnter = () => {
+    if (menuTimeout.value) {
+        clearTimeout(menuTimeout.value);
+        menuTimeout.value = null;
+    }
+};
+
+const onMenuMouseLeave = () => {
+    menuTimeout.value = setTimeout(() => {
+        if (props.activeMenuBlockId === props.block.id) {
+            emit('menu-toggle', null);
+        }
+    }, 10);
+};
+
+const onContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    onMenuToggle(e);
+}
+
 </script>
 
 <template>
     <div class="relative group rounded-md transition-all duration-200"
         :class="{ 'ring-1 ring-blue-500/20 bg-blue-50/10': block.isEditing, 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50 block-hover-effect': !block.isEditing }"
-        @mouseleave="emit('mouseleave')">
+        @mouseleave="emit('mouseleave')" @contextmenu="onContextMenu">
 
         <!-- Block Name Label -->
         <div v-if="block.name"
@@ -90,9 +131,9 @@ const onInput = (e: Event) => {
 
         <!-- Action Menu Button (Top Right) -->
         <div class="absolute top-1 right-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-            <BlockActionsMenu :is-open="activeMenuBlockId === block.id"
-                @toggle="emit('menu-toggle', activeMenuBlockId === block.id ? null : block.id)"
-                @duplicate="emit('duplicate', index)" @rename="emit('rename', index)" @delete="emit('remove', index)" />
+            <BlockActionsMenu :is-open="activeMenuBlockId === block.id" :position="menuPosition" @toggle="onMenuToggle"
+                @mouseenter="onMenuMouseEnter" @mouseleave="onMenuMouseLeave" @duplicate="emit('duplicate', index)"
+                @rename="emit('rename', index)" @delete="emit('remove', index)" />
         </div>
 
         <!-- Preview Mode -->
