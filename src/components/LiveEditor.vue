@@ -4,6 +4,7 @@ import type { Block, FileTreeNode } from '../types';
 import EditorBlock from './editor/EditorBlock.vue';
 import TopBar from './TopBar.vue';
 import SideMenu from './SideMenu.vue';
+import Home from './Home.vue'; // Import Home
 import SettingsDialog from './SettingsDialog.vue';
 import { fileService } from '../services/FileService';
 import { blockService } from '../services/BlockService';
@@ -802,28 +803,31 @@ const handleFileMoved = async (event: { sourcePath: string, newPath: string }) =
 
         <!-- Main Content (Flex Column) -->
         <div class="flex-1 flex flex-col min-w-0 relative">
-            <!-- Top Bar -->
-            <TopBar :filename="fileName" :is-dirty="isDirty" @save="handleSaveFile" />
+            <template v-if="currentFileHandle">
+                <!-- Top Bar -->
+                <TopBar :filename="fileName" :is-dirty="isDirty" @save="handleSaveFile" />
 
-            <div class="flex-1 overflow-y-auto w-full">
-                <div class="max-w-3xl mx-auto py-12 px-6">
-                    <div class="space-y-4">
-                        <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
-                            :active-menu-block-id="activeMenuBlockId" :root-handle="rootDirectoryHandle"
-                            :current-file-path="currentFilePath" @update:block="saveBlock(index)"
-                            @input="triggerAutosave(); updateCommandMenu(index, $event);" @save="saveBlock(index)"
-                            @menu-toggle="toggleMenu" @duplicate="duplicateBlock(index)" @remove="removeBlock(index)"
-                            @edit="editBlock(index)" @rename="promptRenameBlock(index)"
-                            @keydown="handleKeydown($event, index)" @paste="handlePaste($event, index)" />
+                <div class="flex-1 overflow-y-auto w-full">
+                    <div class="max-w-3xl mx-auto py-12 px-6">
+                        <div class="space-y-4">
+                            <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
+                                :active-menu-block-id="activeMenuBlockId" :root-handle="rootDirectoryHandle"
+                                :current-file-path="currentFilePath" @update:block="saveBlock(index)"
+                                @input="triggerAutosave(); updateCommandMenu(index, $event);" @save="saveBlock(index)"
+                                @menu-toggle="toggleMenu" @duplicate="duplicateBlock(index)"
+                                @remove="removeBlock(index)" @edit="editBlock(index)" @rename="promptRenameBlock(index)"
+                                @keydown="handleKeydown($event, index)" @paste="handlePaste($event, index)" />
 
-                        <!-- Add New Block Area -->
-                        <div @click="addNextBlock"
-                            class="h-12 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded flex items-center justify-center text-neutral-400 opacity-0 hover:opacity-100 transition-all duration-200">
-                            <span class="text-sm">+ Add a new block</span>
+                            <!-- Add New Block Area -->
+                            <div @click="addNextBlock"
+                                class="h-12 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded flex items-center justify-center text-neutral-400 opacity-0 hover:opacity-100 transition-all duration-200">
+                                <span class="text-sm">+ Add a new block</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </template>
+            <Home v-else />
         </div>
 
         <!-- Dialogs -->
