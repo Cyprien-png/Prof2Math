@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 import FileTree from './FileTree.vue';
 import type { FileTreeNode } from '../types';
 import CogIcon from './icons/CogIcon.vue';
 
-const isCollapsed = ref(true);
+const STORAGE_KEY_COLLAPSED = 'mathdown_sidemenu_collapsed';
+const storedCollapsed = localStorage.getItem(STORAGE_KEY_COLLAPSED);
+const isCollapsed = ref(storedCollapsed !== null ? storedCollapsed === 'true' : true);
+
+watch(isCollapsed, (val) => {
+    localStorage.setItem(STORAGE_KEY_COLLAPSED, String(val));
+});
 
 const props = defineProps<{
-    fileTree: FileTreeNode[];
-    isRestoring?: boolean;
-    activeFileHandle?: FileSystemFileHandle | null;
-    rootHandle?: FileSystemDirectoryHandle | null;
+    fileTree: FileTreeNode[]; isRestoring?: boolean; activeFileHandle?: FileSystemFileHandle |
+    null; rootHandle?: FileSystemDirectoryHandle | null;
 }>();
 
 import { globalDragState, globalDropTargetPath } from '../services/DragState';
@@ -20,14 +24,10 @@ import { fileService } from '../services/FileService';
 // ... props ...
 
 const emit = defineEmits<{
-    (e: 'open-settings'): void;
-    (e: 'open-file', node: FileTreeNode): void;
-    (e: 'toggle-folder', node: FileTreeNode): void;
-    (e: 'restore-access'): void;
-    (e: 'delete-item', node: FileTreeNode): void;
-    (e: 'rename-item', node: FileTreeNode): void;
-    (e: 'duplicate-item', node: FileTreeNode): void;
-    (e: 'file-moved', event: { sourcePath: string; newPath: string }): void;
+    (e: 'open-settings'): void; (e: 'open-file', node: FileTreeNode): void;
+    (e: 'toggle-folder', node: FileTreeNode): void; (e: 'restore-access'): void; (e: 'delete-item', node:
+        FileTreeNode): void; (e: 'rename-item', node: FileTreeNode): void; (e: 'duplicate-item', node: FileTreeNode):
+        void; (e: 'file-moved', event: { sourcePath: string; newPath: string }): void;
 }>();
 
 const isDragOver = ref(false);
@@ -130,12 +130,8 @@ const onDrop = async (e: DragEvent) => {
             <template v-if="!isCollapsed">
                 <div v-if="isRestoring" class="p-4 flex flex-col items-center justify-center text-center space-y-3">
                     <p class="text-sm text-neutral-500 dark:text-neutral-400">
-                        Access to your recent workspace needs to be restored.
+                        No workspace found. Set or reset the local storage path in the settings.
                     </p>
-                    <button @click="emit('restore-access')"
-                        class="px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors w-full">
-                        Restore Access
-                    </button>
                 </div>
 
                 <FileTree v-else v-for="node in fileTree" :key="node.name" :node="node"

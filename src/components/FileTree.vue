@@ -77,7 +77,7 @@ const handleMenuToggle = (e: Event) => {
     }
 };
 
-const menuRefEl = ref<HTMLElement | null>(null);
+
 
 const onAction = async (action: 'rename' | 'duplicate' | 'delete' | 'edit') => {
     activeMenuPath.value = null;
@@ -85,11 +85,6 @@ const onAction = async (action: 'rename' | 'duplicate' | 'delete' | 'edit') => {
     if (action === 'delete') {
         // ... existing implementation ...
         emit('delete', props.node);
-        return;
-    }
-
-    if (action === 'edit') {
-        emit('open-file', props.node.handle as FileSystemFileHandle);
         return;
     }
 

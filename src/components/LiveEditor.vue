@@ -56,7 +56,7 @@ const pushHistory = () => {
         history.value.shift();
         historyIndex.value--;
     }
-    // console.log(`History Pushed: Index ${historyIndex.value}, Length ${history.value.length}`);
+    // History Pushed log removed
 };
 
 const undo = () => {
@@ -68,7 +68,7 @@ const undo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
-        // console.log(`Undo: Index ${historyIndex.value}`);
+        // Undo log removed
     }
 };
 
@@ -81,7 +81,7 @@ const redo = () => {
             blocks.value = cloneBlocks(snapshot);
         }
         isHistoryNavigating.value = false;
-        // console.log(`Redo: Index ${historyIndex.value}`);
+        // Redo log removed
     }
 };
 
@@ -127,7 +127,7 @@ const handleSaveFile = async () => {
             await fileService.saveFile(currentFileHandle.value, content);
             savedContent.value = content;
             checkDirty();
-            console.log(`Saved to ${fileName.value}.mthd`);
+
         } else {
             const result = await fileService.saveFileAs(content, fileName.value);
             if (result) {
@@ -277,6 +277,11 @@ const isRestoringPermission = ref(false);
 
 const handleSetRootDirectory = async (handle: FileSystemDirectoryHandle) => {
     rootDirectoryHandle.value = handle;
+
+    // Clear expanded paths when changing root
+    expandedPaths.value.clear();
+    saveExpandedPaths();
+
     fileTree.value = await fileService.readDirectory(handle);
     await fileService.setStoredRootHandle(handle);
     isRestoringPermission.value = false;
@@ -324,7 +329,7 @@ onMounted(async () => {
         // @ts-ignore
         const permission = await storedHandle.queryPermission({ mode: 'read' });
         if (permission === 'granted') {
-            fileTree.value = await fileService.readDirectory(storedHandle);
+            await loadDirectory();
         } else {
             // Needs restoration
             isRestoringPermission.value = true;
@@ -365,7 +370,7 @@ const handleOpenFileFromTree = async (node: FileTreeNode) => {
         savedContent.value = blockService.serializeBlocks(blocks.value);
         checkDirty();
 
-        console.log(`Opened file from tree: ${fileName.value} (${currentFilePath.value})`);
+
     } catch (err) {
         console.error('Failed to open file from tree:', err);
         alert('Failed to open file');
