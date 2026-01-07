@@ -101,6 +101,24 @@ watch(blocks, () => {
 
 // --- Actions ---
 
+// Expanded paths persistence
+const EXPANDED_PATHS_KEY = 'mathdown_expanded_paths';
+const expandedPaths = ref<Set<string>>(new Set());
+
+// Load expanded paths
+try {
+    const saved = localStorage.getItem(EXPANDED_PATHS_KEY);
+    if (saved) {
+        expandedPaths.value = new Set(JSON.parse(saved));
+    }
+} catch (e) {
+    console.warn('Failed to load expanded paths:', e);
+}
+
+const saveExpandedPaths = () => {
+    localStorage.setItem(EXPANDED_PATHS_KEY, JSON.stringify(Array.from(expandedPaths.value)));
+};
+
 const handleSaveFile = async () => {
     const content = blockService.serializeBlocks(blocks.value);
 
@@ -265,14 +283,36 @@ const handleSetRootDirectory = async (handle: FileSystemDirectoryHandle) => {
 };
 
 const handleRestoreAccess = async () => {
-    if (!rootDirectoryHandle.value) return;
-    const granted = await fileService.verifyPermission(rootDirectoryHandle.value, false);
-    if (granted) {
-        fileTree.value = await fileService.readDirectory(rootDirectoryHandle.value);
-        isRestoringPermission.value = false;
+    if (rootDirectoryHandle.value) {
+        if (await fileService.verifyPermission(rootDirectoryHandle.value)) {
+            const tree = await fileService.readDirectory(rootDirectoryHandle.value);
+            restoreTreeState(tree);
+            fileTree.value = tree;
+        } else {
+            isRestoringPermission.value = true;
+        }
     }
 };
 
+const restoreTreeState = (nodes: FileTreeNode[]) => {
+    for (const node of nodes) {
+        if (node.kind === 'directory' && node.path && expandedPaths.value.has(node.path)) {
+            node.isOpen = true;
+            if (node.children) {
+                restoreTreeState(node.children);
+            }
+        }
+    }
+};
+
+const loadDirectory = async () => {
+    if (!rootDirectoryHandle.value) return;
+    const tree = await fileService.readDirectory(rootDirectoryHandle.value);
+    restoreTreeState(tree);
+    fileTree.value = tree;
+};
+
+// --- Lifecycle ---
 onMounted(async () => {
     window.addEventListener('keydown', handleGlobalKeydown);
 
@@ -294,13 +334,25 @@ onMounted(async () => {
 
 const handleToggleFolder = (node: FileTreeNode) => {
     node.isOpen = !node.isOpen;
+    if (node.path) {
+        if (node.isOpen) {
+            expandedPaths.value.add(node.path);
+        } else {
+            expandedPaths.value.delete(node.path);
+        }
+        saveExpandedPaths();
+    }
 };
 
-const handleOpenFileFromTree = async (handle: FileSystemFileHandle) => {
+const currentFilePath = ref<string | null>(null);
+
+const handleOpenFileFromTree = async (node: FileTreeNode) => {
     try {
+        const handle = node.handle as FileSystemFileHandle;
         const content = await fileService.readFile(handle);
 
         currentFileHandle.value = handle;
+        currentFilePath.value = node.path || null;
         fileName.value = handle.name.replace(/\.mthd$/, '');
         blocks.value = blockService.parseBlocks(content);
 
@@ -313,7 +365,7 @@ const handleOpenFileFromTree = async (handle: FileSystemFileHandle) => {
         savedContent.value = blockService.serializeBlocks(blocks.value);
         checkDirty();
 
-        console.log(`Opened file from tree: ${fileName.value}`);
+        console.log(`Opened file from tree: ${fileName.value} (${currentFilePath.value})`);
     } catch (err) {
         console.error('Failed to open file from tree:', err);
         alert('Failed to open file');
@@ -364,7 +416,7 @@ const handleRenameRootItem = async (node: FileTreeNode) => {
             node.kind
         );
         // Refresh entire tree
-        fileTree.value = await fileService.readDirectory(rootDirectoryHandle.value);
+        await loadDirectory();
     } catch (err) {
         console.error('Failed to rename root entry:', err);
         alert(`Failed to rename: ${err}`);
@@ -377,18 +429,46 @@ const handleDuplicateRootItem = async (node: FileTreeNode) => {
     try {
         await fileService.duplicateEntry(rootDirectoryHandle.value, node.name);
         // Refresh entire tree
-        fileTree.value = await fileService.readDirectory(rootDirectoryHandle.value);
+        await loadDirectory();
     } catch (err) {
         console.error('Failed to duplicate root entry:', err);
         alert(`Failed to duplicate: ${err}`);
     }
 };
 
+const findNodeByPath = (nodes: FileTreeNode[], path: string): FileTreeNode | null => {
+    for (const node of nodes) {
+        if (node.path === path) return node;
+        if (node.children) {
+            const found = findNodeByPath(node.children, path);
+            if (found) return found;
+        }
+    }
+    return null;
+};
 
+const handleFileMoved = async (event: { sourcePath: string, newPath: string }) => {
+    if (!rootDirectoryHandle.value) return;
 
-const handleFileMoved = async () => {
-    if (rootDirectoryHandle.value) {
-        fileTree.value = await fileService.readDirectory(rootDirectoryHandle.value);
+    // Refresh tree
+    await loadDirectory();
+
+    // Check if we need to reopen the moved file
+    if (currentFilePath.value && currentFilePath.value === event.sourcePath) {
+        const newNode = findNodeByPath(fileTree.value, event.newPath);
+        if (newNode) {
+            // Reopen (just update handle, keep content as is? Content on disk is same)
+            // We call handleOpenFileFromTree to fully re-bind.
+            // Ideally we shouldn't lose unsaved changes.
+            // But existing handleOpenFileFromTree reads from disk and resets history.
+            // We should modify logic to PRESERVE unsaved changes if possible?
+            // User just said "open it with its new path".
+            // If we read from disk, we lose unsaved changes.
+            // Better: Just update handle and path.
+
+            currentFileHandle.value = newNode.handle as FileSystemFileHandle;
+            currentFilePath.value = newNode.path || null;
+        }
     }
 };
 

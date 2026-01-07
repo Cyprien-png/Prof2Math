@@ -97,26 +97,29 @@ export class FileService {
         URL.revokeObjectURL(url);
     }
 
-    async readDirectory(dirHandle: FileSystemDirectoryHandle): Promise<FileTreeNode[]> {
+    async readDirectory(dirHandle: FileSystemDirectoryHandle, basePath: string = ''): Promise<FileTreeNode[]> {
         const nodes: FileTreeNode[] = [];
         // @ts-ignore
         for await (const entry of dirHandle.values()) {
+            const currentPath = basePath ? `${basePath}/${entry.name}` : entry.name;
             if (entry.kind === 'file') {
                 if (entry.name.endsWith('.mthd')) {
                     nodes.push({
                         name: entry.name,
                         kind: 'file',
                         handle: entry,
+                        path: currentPath,
                     });
                 }
             } else if (entry.kind === 'directory') {
-                const children = await this.readDirectory(entry);
+                const children = await this.readDirectory(entry, currentPath);
                 nodes.push({
                     name: entry.name,
                     kind: 'directory',
                     handle: entry,
                     children: children,
-                    isOpen: false
+                    isOpen: false,
+                    path: currentPath,
                 });
             }
         }

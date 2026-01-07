@@ -14,12 +14,12 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    (e: 'open-file', handle: FileSystemFileHandle): void;
+    (e: 'open-file', node: FileTreeNode): void;
     (e: 'toggle-folder', node: FileTreeNode): void;
     (e: 'delete', node: FileTreeNode): void;
     (e: 'rename', node: FileTreeNode): void;
     (e: 'duplicate', node: FileTreeNode): void;
-    (e: 'file-moved'): void;
+    (e: 'file-moved', event: { sourcePath: string; newPath: string }): void;
 }>();
 
 
@@ -50,8 +50,7 @@ const handleClick = () => {
     if (props.node.kind === 'directory') {
         emit('toggle-folder', props.node);
     } else {
-        // It's a file
-        emit('open-file', props.node.handle as FileSystemFileHandle);
+        emit('open-file', props.node);
     }
 };
 
@@ -224,7 +223,16 @@ const onDrop = async (e: DragEvent) => {
             dragged.node.name,
             props.node.handle as FileSystemDirectoryHandle
         );
-        emit('file-moved');
+        // Calculate paths
+        const sourcePath = dragged.node.path;
+        const newPath = props.node.path ? `${props.node.path}/${dragged.node.name}` : dragged.node.name;
+
+        if (sourcePath && newPath) {
+            emit('file-moved', { sourcePath, newPath });
+        } else {
+            // Fallback if paths missing for some reason
+            emit('file-moved', { sourcePath: sourcePath || '', newPath: newPath || '' });
+        }
         // Clear state
         globalDragState.value = null;
     } catch (err) {
@@ -312,7 +320,7 @@ const displayName = computed(() => {
                 :active-file-handle="activeFileHandle" :parent-handle="node.handle as FileSystemDirectoryHandle"
                 @open-file="$emit('open-file', $event)" @toggle-folder="$emit('toggle-folder', $event)"
                 @delete="onChildAction('delete', $event)" @rename="onChildAction('rename', $event)"
-                @duplicate="onChildAction('duplicate', $event)" @file-moved="$emit('file-moved')" />
+                @duplicate="onChildAction('duplicate', $event)" @file-moved="$emit('file-moved', $event)" />
         </div>
     </div>
 </template>

@@ -16,13 +16,13 @@ defineProps<{
 
 const emit = defineEmits<{
     (e: 'open-settings'): void;
-    (e: 'open-file', handle: FileSystemFileHandle): void;
+    (e: 'open-file', node: FileTreeNode): void;
     (e: 'toggle-folder', node: FileTreeNode): void;
     (e: 'restore-access'): void;
     (e: 'delete-item', node: FileTreeNode): void;
     (e: 'rename-item', node: FileTreeNode): void;
     (e: 'duplicate-item', node: FileTreeNode): void;
-    (e: 'file-moved'): void;
+    (e: 'file-moved', event: { sourcePath: string; newPath: string }): void;
 }>();
 </script>
 
@@ -65,7 +65,7 @@ const emit = defineEmits<{
                     :active-file-handle="activeFileHandle" :parent-handle="rootHandle || undefined"
                     @open-file="emit('open-file', $event)" @toggle-folder="emit('toggle-folder', $event)"
                     @delete="emit('delete-item', $event)" @rename="emit('rename-item', $event)"
-                    @duplicate="emit('duplicate-item', $event)" @file-moved="emit('file-moved')" />
+                    @duplicate="emit('duplicate-item', $event)" @file-moved="emit('file-moved', $event)" />
             </template>
         </div>
 

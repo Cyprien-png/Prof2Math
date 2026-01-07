@@ -12,4 +12,5 @@ export interface FileTreeNode {
     handle: FileSystemFileHandle | FileSystemDirectoryHandle;
     children?: FileTreeNode[];
     isOpen?: boolean;
+    path?: string;
 }
