@@ -24,18 +24,22 @@ const emit = defineEmits<{
 
 
 
+import { activeMenuPath } from '../services/MenuState';
+
+// ... props ...
+
 const currentDepth = computed(() => props.depth || 0);
 const isActive = ref(false);
-const showMenu = ref(false);
+const showMenu = computed(() => !!props.node.path && activeMenuPath.value === props.node.path);
 const menuRef = ref<HTMLElement | null>(null);
 
 watch(() => [props.node, props.activeFileHandle], async () => {
+    // ... existing isActive logic ... 
     if (props.node.kind === 'file' && props.activeFileHandle) {
         if (props.node.name === props.activeFileHandle.name) {
             try {
                 isActive.value = await (props.node.handle as FileSystemFileHandle).isSameEntry(props.activeFileHandle);
             } catch (e) {
-                // Fallback or error (e.g. permission lost)
                 isActive.value = false;
             }
         } else {
@@ -66,33 +70,20 @@ const handleMenuToggle = (e: Event) => {
             x: rect.right - 128, // Align right (w-32 is 128px)
             y: rect.bottom + 4
         };
-        showMenu.value = true;
+        activeMenuPath.value = props.node.path || null;
     } else {
         // Closing
-        showMenu.value = false;
+        activeMenuPath.value = null;
     }
 };
 
-// Close menu on click outside
-const closeMenu = () => {
-    showMenu.value = false;
-};
-
-// Global click listener to close menu
-watch(showMenu, (val) => {
-    if (val) {
-        setTimeout(() => {
-            window.addEventListener('click', closeMenu);
-        }, 0);
-    } else {
-        window.removeEventListener('click', closeMenu);
-    }
-});
+const menuRefEl = ref<HTMLElement | null>(null);
 
 const onAction = async (action: 'rename' | 'duplicate' | 'delete' | 'edit') => {
-    showMenu.value = false;
+    activeMenuPath.value = null;
 
     if (action === 'delete') {
+        // ... existing implementation ...
         emit('delete', props.node);
         return;
     }
