@@ -28,20 +28,11 @@ const emit = defineEmits<{
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
-const resizeTextarea = () => {
-    const el = textareaRef.value;
-    if (el) {
-        el.style.height = '1px';
-        el.style.height = (el.scrollHeight) + 'px';
-    }
-};
-
 // Expose focus method
 const focusTextarea = () => {
     nextTick(() => {
         if (textareaRef.value) {
             textareaRef.value.focus();
-            resizeTextarea();
         }
     });
 };
@@ -112,7 +103,6 @@ watch(() => props.currentFilePath, () => {
 });
 
 const onInput = (e: Event) => {
-    resizeTextarea();
     // We update the local block's markdown in the parent via v-model or direct mutation reference
     // Since block is an object prop, mutating it directly is technically possible but prop-mutation is anti-pattern.
     // However, LiveEditor binds :block="block", so the object reference is shared.
@@ -196,11 +186,17 @@ const onContextMenu = (e: MouseEvent) => {
             v-html="block.html"></div>
 
         <!-- Edit Mode -->
-        <textarea v-else ref="textareaRef" :id="`textarea-${index}`" v-model="block.markdown"
-            @blur="emit('save', index)" @input="onInput" @keydown="emit('keydown', $event, index)"
-            @paste="emit('paste', $event)" rows="1"
-            class="w-full p-4 bg-transparent font-mono text-base focus:outline-none focus:border-neutral-500 resize-none overflow-hidden block"
-            placeholder="Empty block...">
-        </textarea>
+        <div v-else class="relative w-full">
+            <!-- Shadow div for height calculation -->
+            <div ref="shadowRef"
+                class="w-full p-4 font-mono text-base border border-transparent overflow-hidden invisible pointer-events-none whitespace-pre-wrap break-words"
+                aria-hidden="true">{{ block.markdown + '\n' }}</div>
+
+            <textarea ref="textareaRef" :id="`textarea-${index}`" v-model="block.markdown" @blur="emit('save', index)"
+                @input="onInput" @keydown="emit('keydown', $event, index)" @paste="emit('paste', $event)" rows="1"
+                class="w-full p-4 bg-transparent font-mono text-base focus:outline-none focus:border-neutral-500 resize-none overflow-hidden block absolute top-0 left-0 h-full"
+                placeholder="Empty block...">
+            </textarea>
+        </div>
     </div>
 </template>
