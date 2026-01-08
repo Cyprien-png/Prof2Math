@@ -84,7 +84,8 @@ const renderImages = async () => {
                 // Resolve path
                 // Simple resolution: relative to current file's directory
                 const fileDir = props.currentFilePath.substring(0, props.currentFilePath.lastIndexOf('/'));
-                const targetPath = fileDir ? `${fileDir}/${src}` : src;
+                const decodedSrc = decodeURIComponent(src);
+                const targetPath = fileDir ? `${fileDir}/${decodedSrc}` : decodedSrc;
 
                 const fileHandle = await fileService.getFileHandleByPath(props.rootHandle, targetPath);
                 const file = await fileHandle.getFile();

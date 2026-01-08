@@ -99,56 +99,7 @@ const onAction = async (action: 'rename' | 'duplicate' | 'delete' | 'edit') => {
     }
 };
 
-const onChildAction = async (action: 'delete' | 'rename' | 'duplicate', childNode: FileTreeNode) => {
-    if (action === 'delete') {
-        if (!confirm(`Are you sure you want to delete "${childNode.name}"?`)) {
-            return;
-        }
-        try {
-            await fileService.deleteEntry(props.node.handle as FileSystemDirectoryHandle, childNode.name);
-            const idx = props.node.children?.findIndex(c => c.name === childNode.name);
-            if (idx !== undefined && idx !== -1) {
-                props.node.children?.splice(idx, 1);
-            }
-        } catch (err) {
-            console.error('Failed to delete entry:', err);
-            alert('Failed to delete item.');
-        }
-    } else if (action === 'rename') {
-        const currentName = childNode.name;
-        // Strip extension for prompt if it's a file
-        const editableName = childNode.kind === 'file' ? currentName.replace(/\.mthd$/, '') : currentName;
-
-        const newNameInput = prompt('Enter new name:', editableName);
-        if (!newNameInput || newNameInput === editableName) return;
-
-        // Append extension back
-        const newName = childNode.kind === 'file' ? `${newNameInput}.mthd` : newNameInput;
-
-        try {
-            await fileService.renameEntry(
-                props.node.handle as FileSystemDirectoryHandle,
-                childNode.name,
-                newName,
-                childNode.kind
-            );
-            // Refresh children handles
-            props.node.children = await fileService.readDirectory(props.node.handle as FileSystemDirectoryHandle);
-        } catch (err) {
-            console.error('Failed to rename:', err);
-            alert(`Failed to rename: ${err}`);
-        }
-    } else if (action === 'duplicate') {
-        try {
-            await fileService.duplicateEntry(props.node.handle as FileSystemDirectoryHandle, childNode.name);
-            // Refresh children to show new file
-            props.node.children = await fileService.readDirectory(props.node.handle as FileSystemDirectoryHandle);
-        } catch (err) {
-            console.error('Failed to duplicate:', err);
-            alert(`Failed to duplicate: ${err}`);
-        }
-    }
-};
+// onChildAction removed - events bubble up directly
 const onDragStart = (e: DragEvent) => {
     e.stopPropagation();
     if (e.dataTransfer) {
@@ -226,7 +177,7 @@ const targetPath = computed(() => {
     }
 });
 
-const onDragEnter = (e: DragEvent) => {
+const onDragEnter = () => {
     if (checkDropValidity()) {
         globalDropTargetPath.value = targetPath.value;
     }
@@ -449,8 +400,8 @@ const displayName = computed(() => {
             <FileTree v-for="child in node.children" :key="child.name" :node="child" :depth="currentDepth + 1"
                 :active-file-handle="activeFileHandle" :parent-handle="node.handle as FileSystemDirectoryHandle"
                 @open-file="$emit('open-file', $event)" @toggle-folder="$emit('toggle-folder', $event)"
-                @delete="onChildAction('delete', $event)" @rename="onChildAction('rename', $event)"
-                @duplicate="onChildAction('duplicate', $event)" @file-moved="$emit('file-moved', $event)" />
+                @delete="$emit('delete', $event)" @rename="$emit('rename', $event)"
+                @duplicate="$emit('duplicate', $event)" @file-moved="$emit('file-moved', $event)" />
         </div>
     </div>
 </template>

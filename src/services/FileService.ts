@@ -216,6 +216,18 @@ export class FileService {
             // @ts-ignore
             : await parentHandle.getDirectoryHandle(oldName);
 
+        // Optimization: Try native .move()
+        // @ts-ignore
+        if (sourceHandle.move) {
+            try {
+                // @ts-ignore
+                await sourceHandle.move(newName);
+                return;
+            } catch (err) {
+                console.warn('Native move failed (permission/support), falling back to copy-delete:', err);
+            }
+        }
+
         // 2. Perform copy
         await this.copyEntry(parentHandle, sourceHandle, parentHandle, newName);
 
@@ -232,9 +244,7 @@ export class FileService {
     }
 
     async moveEntry(sourceParent: FileSystemDirectoryHandle, sourceName: string, destParent: FileSystemDirectoryHandle): Promise<void> {
-        // 1. Get source handle
-        // We don't know if it's a file or directory easily without checking, or we can try both.
-        // Actually, we can just iterate sourceParent to find it and get the handle + kind.
+        // ... (get sourceHandle logic)
         let sourceHandle: FileSystemHandle | null = null;
         // @ts-ignore
         for await (const entry of sourceParent.values()) {
@@ -246,6 +256,18 @@ export class FileService {
 
         if (!sourceHandle) {
             throw new Error(`Source entry "${sourceName}" not found.`);
+        }
+
+        // Optimization: Try native .move()
+        // @ts-ignore
+        if (sourceHandle.move) {
+            try {
+                // @ts-ignore
+                await sourceHandle.move(destParent);
+                return;
+            } catch (err) {
+                console.warn('Native move failed (permission/support), falling back to copy-delete:', err);
+            }
         }
 
         // 2. Copy to destination

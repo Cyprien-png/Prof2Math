@@ -89,10 +89,11 @@ export class CommandService {
             // Since we save relative to the file's dir, we just need the subpath.
 
             const relativeMarkdownPath = `${imagesDirName}/${file.name}`;
+            const encodedPath = encodeURI(relativeMarkdownPath);
 
             return {
                 success: true,
-                markdown: `![${file.name}](${relativeMarkdownPath})`
+                markdown: `![${file.name}](${encodedPath})`
             };
 
         } catch (err: any) {

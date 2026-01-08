@@ -394,7 +394,8 @@ const handlePaste = async (e: ClipboardEvent, index: number) => {
                 const after = block.markdown.slice(cursor);
 
                 const relativeMarkdownPath = `${imagesDirName}/${filename}`;
-                block.markdown = `${before}![${filename}](${relativeMarkdownPath})${after}`;
+                const encodedPath = encodeURI(relativeMarkdownPath);
+                block.markdown = `${before}![${filename}](${encodedPath})${after}`;
                 saveBlock(index);
 
             } catch (err) {
@@ -638,7 +639,7 @@ const toggleMenu = (id: string | null) => {
     activeMenuBlockId.value = id;
 }
 
-const handleDeleteRootItem = async (node: FileTreeNode) => {
+const handleDeleteItem = async (node: FileTreeNode) => {
     if (!rootDirectoryHandle.value) return;
 
     if (!confirm(`Are you sure you want to delete "${node.name}"?`)) {
@@ -646,19 +647,61 @@ const handleDeleteRootItem = async (node: FileTreeNode) => {
     }
 
     try {
-        await fileService.deleteEntry(rootDirectoryHandle.value, node.name);
-        // Remove from local list
-        const idx = fileTree.value.findIndex(c => c.name === node.name);
-        if (idx !== -1) {
-            fileTree.value.splice(idx, 1);
+        let parentHandle = rootDirectoryHandle.value;
+        if (node.path && node.path !== node.name) {
+            const pathParts = node.path.split('/');
+            pathParts.pop(); // Remove self
+            if (pathParts.length > 0) {
+                // @ts-ignore
+                parentHandle = await fileService.getDirectoryHandleByPath(rootDirectoryHandle.value, pathParts.join('/'));
+            }
         }
+
+        await fileService.deleteEntry(parentHandle, node.name);
+
+        // Also delete sidecar image folder if it exists
+        if (node.kind === 'file') {
+            const baseName = node.name.replace(/\.mthd$/, '');
+            const imagesDir = `${baseName}___images`;
+            try {
+                await fileService.deleteEntry(parentHandle, imagesDir);
+            } catch (e) {
+                // Ignore
+            }
+        }
+
+        // Refresh tree is simplest way to sync everything
+        await loadDirectory();
+
     } catch (err) {
-        console.error('Failed to delete root entry:', err);
+        console.error('Failed to delete entry:', err);
         alert('Failed to delete item.');
     }
 };
 
-const handleRenameRootItem = async (node: FileTreeNode) => {
+const handleDuplicateItem = async (node: FileTreeNode) => {
+    if (!rootDirectoryHandle.value) return;
+
+    try {
+        let parentHandle = rootDirectoryHandle.value;
+        if (node.path && node.path !== node.name) {
+            const pathParts = node.path.split('/');
+            pathParts.pop();
+            if (pathParts.length > 0) {
+                // @ts-ignore
+                parentHandle = await fileService.getDirectoryHandleByPath(rootDirectoryHandle.value, pathParts.join('/'));
+            }
+        }
+
+        await fileService.duplicateEntry(parentHandle, node.name);
+        await loadDirectory();
+    } catch (err) {
+        console.error('Failed to duplicate:', err);
+        alert(`Failed to duplicate: ${err}`);
+    }
+};
+
+const handleRenameItem = async (node: FileTreeNode) => {
     if (!rootDirectoryHandle.value) return;
 
     const currentName = node.name;
@@ -670,8 +713,20 @@ const handleRenameRootItem = async (node: FileTreeNode) => {
     const newName = node.kind === 'file' ? `${newNameInput}.mthd` : newNameInput;
 
     try {
+        // Resolve Parent Directory
+        let parentHandle = rootDirectoryHandle.value;
+        if (node.path && node.path !== node.name) {
+            const pathParts = node.path.split('/');
+            pathParts.pop(); // Remove self
+            if (pathParts.length > 0) {
+                const parentPath = pathParts.join('/');
+                // @ts-ignore
+                parentHandle = await fileService.getDirectoryHandleByPath(rootDirectoryHandle.value, parentPath);
+            }
+        }
+
         await fileService.renameEntry(
-            rootDirectoryHandle.value,
+            parentHandle,
             node.name,
             newName,
             node.kind
@@ -687,13 +742,63 @@ const handleRenameRootItem = async (node: FileTreeNode) => {
             try {
                 // Try renaming the images folder too
                 await fileService.renameEntry(
-                    rootDirectoryHandle.value,
+                    parentHandle,
                     oldImagesDir,
                     newImagesDir,
                     'directory'
                 );
             } catch (e) {
-                // Ignore if image folder doesn't exist
+                // Ignore
+            }
+
+            // Update Content Links
+            try {
+                // 1. Get handle to the NEW file file in correct parent
+                // @ts-ignore
+                const fileHandle = await parentHandle.getFileHandle(newName);
+                const content = await fileService.readFile(fileHandle);
+
+                // 2. Replace links
+                const escapedOldDir = oldImagesDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const encodedOldDir = encodeURI(oldImagesDir).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+                const encodedNewDir = encodeURI(newImagesDir);
+
+                let newContent = content;
+
+                // Replace encoded path
+                const regexEncoded = new RegExp(`\\(${encodedOldDir}/`, 'g');
+                newContent = newContent.replace(regexEncoded, `(${encodedNewDir}/`);
+
+                // Replace unencoded path
+                const regexUnencoded = new RegExp(`\\(${escapedOldDir}/`, 'g');
+                newContent = newContent.replace(regexUnencoded, `(${encodedNewDir}/`);
+
+                if (newContent !== content) {
+                    await fileService.saveFile(fileHandle, newContent);
+                }
+
+                const wasOpen = currentFilePath.value === node.path;
+
+                if (wasOpen) {
+                    // Re-resolve currentFilePath
+                    // If path was "sub/foo.mthd", new path is "sub/newName"
+                    let newPath = newName;
+                    if (node.path && node.path.includes('/')) {
+                        const p = node.path.split('/');
+                        p.pop();
+                        p.push(newName);
+                        newPath = p.join('/');
+                    }
+
+                    currentFilePath.value = newPath;
+                    fileName.value = newBaseName;
+                    currentFileHandle.value = fileHandle;
+                    blocks.value = blockService.parseBlocks(newContent);
+                    savedContent.value = newContent;
+                }
+            } catch (e) {
+                console.error('Failed to update content links on rename:', e);
             }
         }
 
@@ -705,18 +810,7 @@ const handleRenameRootItem = async (node: FileTreeNode) => {
     }
 };
 
-const handleDuplicateRootItem = async (node: FileTreeNode) => {
-    if (!rootDirectoryHandle.value) return;
 
-    try {
-        await fileService.duplicateEntry(rootDirectoryHandle.value, node.name);
-        // Refresh entire tree
-        await loadDirectory();
-    } catch (err) {
-        console.error('Failed to duplicate root entry:', err);
-        alert(`Failed to duplicate: ${err}`);
-    }
-};
 
 const findNodeByPath = (nodes: FileTreeNode[], path: string): FileTreeNode | null => {
     for (const node of nodes) {
@@ -811,9 +905,8 @@ const handleFileMoved = async (event: { sourcePath: string, newPath: string }) =
         <SideMenu :file-tree="fileTree" :is-restoring="isRestoringPermission" @open-settings="showSettings = true"
             :active-file-handle="currentFileHandle" :root-handle="rootDirectoryHandle"
             @open-file="handleOpenFileFromTree" @toggle-folder="handleToggleFolder"
-            @restore-access="handleRestoreAccess" @delete-item="handleDeleteRootItem"
-            @rename-item="handleRenameRootItem" @duplicate-item="handleDuplicateRootItem"
-            @file-moved="handleFileMoved" />
+            @restore-access="handleRestoreAccess" @delete-item="handleDeleteItem" @rename-item="handleRenameItem"
+            @duplicate-item="handleDuplicateItem" @file-moved="handleFileMoved" />
 
         <!-- Main Content (Flex Column) -->
         <div class="flex-1 flex flex-col min-w-0 relative">
