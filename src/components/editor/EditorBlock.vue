@@ -82,17 +82,34 @@ const focusTextarea = () => {
                             const caret = getCaretCoordinates(textareaRef.value, charIndex);
                             const rect = textareaRef.value.getBoundingClientRect();
 
-                            // Calculate absolute position on page
-                            // rect.top is relative to viewport. window.scrollY is viewport scroll.
-                            // absoluteCaretY = window.scrollY + rect.top + caret.top
-                            const absoluteCaretY = window.scrollY + rect.top + caret.top;
+                            // Find the scroll container (closest parent with overflow-y-auto)
+                            // In LiveEditor, this is the div with class "overflow-y-auto"
+                            let scrollContainer: HTMLElement | null = textareaRef.value.closest('.overflow-y-auto');
+                            // Fallback to window/body if no specific container found (though in this app we know there is one)
+                            const scrollTop = scrollContainer ? scrollContainer.scrollTop : window.scrollY;
 
-                            const targetScrollY = absoluteCaretY - targetClickY.value;
+                            // 1. Measure y of caret relatively to document/scroll-container top
+                            // rect.top is relative to viewport. 
+                            const caretBodyY = scrollTop + rect.top + caret.top;
 
-                            window.scrollTo({
-                                top: targetScrollY,
-                                behavior: 'auto'
-                            });
+                            // 2. We have cursor screen y saved in targetClickY.value
+                            const cursorScreenY = targetClickY.value;
+
+                            // 3. Compute difference (caret body y - cursor screen y)
+                            const targetScrollY = caretBodyY - cursorScreenY;
+
+                            // 4. Scroll to that new y
+                            if (scrollContainer) {
+                                scrollContainer.scrollTo({
+                                    top: targetScrollY,
+                                    behavior: 'auto'
+                                });
+                            } else {
+                                window.scrollTo({
+                                    top: targetScrollY,
+                                    behavior: 'auto'
+                                });
+                            }
 
                             targetClickY.value = null;
                             targetLine.value = null;
@@ -100,13 +117,26 @@ const focusTextarea = () => {
                             // Fallback centered scroll
                             const caret = getCaretCoordinates(textareaRef.value, charIndex);
                             const rect = textareaRef.value.getBoundingClientRect();
-                            const absoluteCaretY = window.scrollY + rect.top + caret.top;
-                            const targetScrollY = absoluteCaretY - (window.innerHeight / 2);
 
-                            window.scrollTo({
-                                top: targetScrollY,
-                                behavior: 'smooth'
-                            });
+                            let scrollContainer: HTMLElement | null = textareaRef.value.closest('.overflow-y-auto');
+                            const scrollTop = scrollContainer ? scrollContainer.scrollTop : window.scrollY;
+
+                            const absoluteCaretY = scrollTop + rect.top + caret.top;
+                            const viewportHeight = scrollContainer ? scrollContainer.clientHeight : window.innerHeight;
+
+                            const targetScrollY = absoluteCaretY - (viewportHeight / 2);
+
+                            if (scrollContainer) {
+                                scrollContainer.scrollTo({
+                                    top: targetScrollY,
+                                    behavior: 'smooth'
+                                });
+                            } else {
+                                window.scrollTo({
+                                    top: targetScrollY,
+                                    behavior: 'smooth'
+                                });
+                            }
                             targetLine.value = null;
                         }
                     });
