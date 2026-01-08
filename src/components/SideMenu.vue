@@ -101,6 +101,49 @@ const onDrop = async (e: DragEvent) => {
     }
 
     globalDragState.value = null;
+    globalDragState.value = null;
+};
+
+// --- Root Context Menu ---
+const showRootMenu = ref(false);
+const rootMenuPosition = ref({ x: 0, y: 0 });
+
+const handleRootContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    if (!props.rootHandle) return;
+
+    showRootMenu.value = true;
+    rootMenuPosition.value = {
+        x: e.clientX,
+        y: e.clientY
+    };
+};
+
+const onRootAction = (action: 'new-file' | 'new-folder') => {
+    showRootMenu.value = false;
+    if (!props.rootHandle) return;
+
+    // Create a synthetic root node to pass to creating logic
+    // This mocks a FileTreeNode that represents the root directory
+    const rootNode: FileTreeNode = {
+        name: props.rootHandle.name,
+        kind: 'directory',
+        path: props.rootHandle.name, // Or undefined/empty? LiveEditor uses path to find parent.
+        // LiveEditor create logic: if directory, uses node.handle. 
+        // path is used if resolving parent from strings.
+        handle: props.rootHandle,
+        isOpen: true
+    };
+
+    if (action === 'new-file') {
+        emit('create-file', rootNode);
+    } else {
+        emit('create-folder', rootNode);
+    }
+};
+
+const closeRootMenu = () => {
+    showRootMenu.value = false;
 };
 </script>
 
@@ -145,7 +188,7 @@ const onDrop = async (e: DragEvent) => {
                 <!-- Drop zone for root (filling remaining space) -->
                 <div class="flex-1 min-h-[50px] transition-colors rounded"
                     :class="{ 'bg-blue-50 dark:bg-blue-900/10 ring-inset ring-2 ring-blue-500/50': isDragOver }"
-                    @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
+                    @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop" @contextmenu="handleRootContextMenu">
                 </div>
             </template>
         </div>
@@ -159,5 +202,23 @@ const onDrop = async (e: DragEvent) => {
                 <span v-if="!isCollapsed" class="whitespace-nowrap font-medium">Settings</span>
             </button>
         </div>
+
+        <!-- Root Context Menu -->
+        <Teleport to="body">
+            <div v-if="showRootMenu"
+                class="fixed w-32 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md shadow-lg z-[9999] py-1"
+                :style="{ left: `${rootMenuPosition.x}px`, top: `${rootMenuPosition.y}px` }" @click.stop
+                v-click-outside="closeRootMenu" @mouseleave="closeRootMenu">
+
+                <button @click="onRootAction('new-file')"
+                    class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                    New File
+                </button>
+                <button @click="onRootAction('new-folder')"
+                    class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                    New Folder
+                </button>
+            </div>
+        </Teleport>
     </div>
 </template>
