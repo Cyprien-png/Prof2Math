@@ -20,6 +20,8 @@ const emit = defineEmits<{
     (e: 'rename', node: FileTreeNode): void;
     (e: 'duplicate', node: FileTreeNode): void;
     (e: 'file-moved', event: { sourcePath: string; newPath: string }): void;
+    (e: 'create-file', node: FileTreeNode): void;
+    (e: 'create-folder', node: FileTreeNode): void;
 }>();
 
 
@@ -79,7 +81,7 @@ const handleMenuToggle = (e: Event) => {
 
 
 
-const onAction = async (action: 'rename' | 'duplicate' | 'delete' | 'edit') => {
+const onAction = async (action: 'rename' | 'duplicate' | 'delete' | 'edit' | 'new-file' | 'new-folder') => {
     activeMenuPath.value = null;
 
     if (action === 'delete') {
@@ -95,6 +97,16 @@ const onAction = async (action: 'rename' | 'duplicate' | 'delete' | 'edit') => {
 
     if (action === 'duplicate') {
         emit('duplicate', props.node);
+        return;
+    }
+
+    if (action === 'new-file') {
+        emit('create-file', props.node);
+        return;
+    }
+
+    if (action === 'new-folder') {
+        emit('create-folder', props.node);
         return;
     }
 };
@@ -375,6 +387,17 @@ const displayName = computed(() => {
 
 
 
+                    <button @click="onAction('new-file')"
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                        New File
+                    </button>
+                    <button @click="onAction('new-folder')"
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                        New Folder
+                    </button>
+
+                    <div class="h-px bg-neutral-200 dark:bg-neutral-700 my-1"></div>
+
                     <button @click="onAction('rename')"
                         class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
                         Rename
@@ -401,7 +424,8 @@ const displayName = computed(() => {
                 :active-file-handle="activeFileHandle" :parent-handle="node.handle as FileSystemDirectoryHandle"
                 @open-file="$emit('open-file', $event)" @toggle-folder="$emit('toggle-folder', $event)"
                 @delete="$emit('delete', $event)" @rename="$emit('rename', $event)"
-                @duplicate="$emit('duplicate', $event)" @file-moved="$emit('file-moved', $event)" />
+                @duplicate="$emit('duplicate', $event)" @file-moved="$emit('file-moved', $event)"
+                @create-file="$emit('create-file', $event)" @create-folder="$emit('create-folder', $event)" />
         </div>
     </div>
 </template>

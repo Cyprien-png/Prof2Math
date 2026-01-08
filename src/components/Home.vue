@@ -7,7 +7,7 @@ import Ana from './icons/Ana.vue';
         <h2 class="text-xl font-bold rotate-12 translate-x-16 translate-y-8">MathDown</h2>
         <Ana class="size-40" />
 
-        <h1 class="text-3xl font-bold">No document opened</h1>
+        <h1 class="text-3xl text-neutral-400">No document opened</h1>
         <span>
             Create a file, write in Markdown, and use the power of AI to simplify, generate, translate, and correct your
             studies.

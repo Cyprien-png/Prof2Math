@@ -896,6 +896,81 @@ const handleFileMoved = async (event: { sourcePath: string, newPath: string }) =
     }
 };
 
+const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory') => {
+    if (!rootDirectoryHandle.value) return;
+
+    // If node is a directory, we create INSIDE it.
+    // If node is a file, we create as SIBLING (path parts logic).
+    let parentHandle = rootDirectoryHandle.value;
+    let parentPath = '';
+
+    if (node.kind === 'directory') {
+        parentHandle = node.handle as FileSystemDirectoryHandle;
+        parentPath = node.path || node.name; // Root might be just name
+        // Ensure parentPath is correct full path if possible
+        if (node.path) parentPath = node.path;
+    } else {
+        // Sibling logic for files
+        if (node.path && node.path !== node.name) {
+            const pathParts = node.path.split('/');
+            pathParts.pop();
+            if (pathParts.length > 0) {
+                parentPath = pathParts.join('/');
+                // @ts-ignore
+                parentHandle = await fileService.getDirectoryHandleByPath(rootDirectoryHandle.value, parentPath);
+            }
+        }
+    }
+
+    const newNameInput = prompt(`Enter name for new ${kind} in "${node.kind === 'directory' ? node.name : 'current folder'}":`);
+    if (!newNameInput) return;
+
+    let finalName = newNameInput;
+    if (kind === 'file' && !finalName.endsWith('.mthd')) {
+        finalName += '.mthd';
+    }
+
+    try {
+        if (kind === 'file') {
+            // @ts-ignore
+            await parentHandle.getFileHandle(finalName, { create: true });
+        } else {
+            // @ts-ignore
+            await parentHandle.getDirectoryHandle(finalName, { create: true });
+        }
+
+        await loadDirectory();
+
+        // If file, verify logic to auto-open
+        if (kind === 'file') {
+            // Construct full path for opening
+            // If parentPath is empty (root), full path is finalName
+            // If parentPath exists, full path is parentPath + '/' + finalName
+            const fullPath = parentPath ? `${parentPath}/${finalName}` : finalName;
+
+            // Allow a small delay for tree refresh/re-indexing if needed, though loadDirectory awaits
+            const newNode = findNodeByPath(fileTree.value, fullPath);
+            if (newNode) {
+                handleOpenFileFromTree(newNode);
+            }
+        }
+
+        // If we created inside a folder, we should ensure it's expanded?
+        // logic for toggle-folder might be needed or loadDirectory preserves state?
+        // loadDirectory currently resets tree state? No, fileService.readDirectory just reads.
+        // FileTree component state (isOpen) is internal?
+        // FileTreeNode struct has isOpen? Yes.
+        // We might need to ensure the parent folder is marked isOpen if we added to it.
+        if (node.kind === 'directory') {
+            node.isOpen = true;
+        }
+
+    } catch (err) {
+        console.error('Failed to create item:', err);
+        alert(`Failed to create item: ${err}`);
+    }
+};
+
 </script>
 
 <template>
@@ -906,7 +981,9 @@ const handleFileMoved = async (event: { sourcePath: string, newPath: string }) =
             :active-file-handle="currentFileHandle" :root-handle="rootDirectoryHandle"
             @open-file="handleOpenFileFromTree" @toggle-folder="handleToggleFolder"
             @restore-access="handleRestoreAccess" @delete-item="handleDeleteItem" @rename-item="handleRenameItem"
-            @duplicate-item="handleDuplicateItem" @file-moved="handleFileMoved" />
+            @duplicate-item="handleDuplicateItem" @file-moved="handleFileMoved"
+            @create-file="handleCreateNewItem($event, 'file')"
+            @create-folder="handleCreateNewItem($event, 'directory')" />
 
         <!-- Main Content (Flex Column) -->
         <div class="flex-1 flex flex-col min-w-0 relative">

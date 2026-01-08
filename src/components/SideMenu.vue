@@ -28,6 +28,7 @@ const emit = defineEmits<{
     (e: 'toggle-folder', node: FileTreeNode): void; (e: 'restore-access'): void; (e: 'delete-item', node:
         FileTreeNode): void; (e: 'rename-item', node: FileTreeNode): void; (e: 'duplicate-item', node: FileTreeNode):
         void; (e: 'file-moved', event: { sourcePath: string; newPath: string }): void;
+    (e: 'create-file', node: FileTreeNode): void; (e: 'create-folder', node: FileTreeNode): void;
 }>();
 
 const isDragOver = ref(false);
@@ -138,7 +139,8 @@ const onDrop = async (e: DragEvent) => {
                     :active-file-handle="activeFileHandle" :parent-handle="rootHandle || undefined"
                     @open-file="emit('open-file', $event)" @toggle-folder="emit('toggle-folder', $event)"
                     @delete="emit('delete-item', $event)" @rename="emit('rename-item', $event)"
-                    @duplicate="emit('duplicate-item', $event)" @file-moved="emit('file-moved', $event)" />
+                    @duplicate="emit('duplicate-item', $event)" @file-moved="emit('file-moved', $event)"
+                    @create-file="emit('create-file', $event)" @create-folder="emit('create-folder', $event)" />
 
                 <!-- Drop zone for root (filling remaining space) -->
                 <div class="flex-1 min-h-[50px] transition-colors rounded"
