@@ -5,6 +5,10 @@ import FileTree from './FileTree.vue';
 import type { FileTreeNode } from '../types';
 import CogIcon from './icons/CogIcon.vue';
 
+// Messages
+import NoWorkspaceFound from './messages/sidemenu/NoWorkspaceFound.vue';
+import NoLocalStorage from './messages/sidemenu/NoLocalStorage.vue';
+
 const STORAGE_KEY_COLLAPSED = 'mathdown_sidemenu_collapsed';
 const storedCollapsed = localStorage.getItem(STORAGE_KEY_COLLAPSED);
 const isCollapsed = ref(storedCollapsed !== null ? storedCollapsed === 'true' : true);
@@ -172,21 +176,19 @@ const closeRootMenu = () => {
         <!-- Menu Items -->
         <div class="flex-1 py-4 flex flex-col gap-1 px-2 overflow-y-auto">
             <template v-if="!isCollapsed">
-                <div v-if="isRestoring" class="p-4 flex flex-col items-center justify-center text-center space-y-3">
-                    <p class="text-sm text-neutral-500 dark:text-neutral-400">
-                        No workspace found. Set or reset the local storage path in the settings.
-                    </p>
-                </div>
+                <NoWorkspaceFound v-if="isRestoring" />
 
-                <FileTree v-else v-for="node in fileTree" :key="node.name" :node="node"
-                    :active-file-handle="activeFileHandle" :parent-handle="rootHandle || undefined"
+                <FileTree v-else-if="fileTree && fileTree.length > 0" v-for="node in fileTree" :key="node.name"
+                    :node="node" :active-file-handle="activeFileHandle" :parent-handle="rootHandle || undefined"
                     @open-file="emit('open-file', $event)" @toggle-folder="emit('toggle-folder', $event)"
                     @delete="emit('delete-item', $event)" @rename="emit('rename-item', $event)"
                     @duplicate="emit('duplicate-item', $event)" @file-moved="emit('file-moved', $event)"
                     @create-file="emit('create-file', $event)" @create-folder="emit('create-folder', $event)" />
 
+                <NoLocalStorage v-else />
+
                 <!-- Drop zone for root (filling remaining space) -->
-                <div class="flex-1 min-h-[50px] transition-colors rounded"
+                <div v-if="fileTree && fileTree.length > 0" class="flex-1 min-h-[50px] transition-colors rounded"
                     :class="{ 'bg-blue-50 dark:bg-blue-900/10 ring-inset ring-2 ring-blue-500/50': isDragOver }"
                     @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop" @contextmenu="handleRootContextMenu">
                 </div>
