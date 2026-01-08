@@ -12,6 +12,7 @@ import { commandService } from '../services/CommandService';
 import CommandMenu from './editor/CommandMenu.vue';
 
 import { DEFAULT_FILE_CONTENT } from '../constants';
+import { getCaretCoordinates } from '../utils/caret';
 
 // --- Props ---
 const props = defineProps<{
@@ -213,6 +214,8 @@ const saveBlock = (index: number) => {
         handleSaveFile();
         if (autosaveTimeout.value) clearTimeout(autosaveTimeout.value);
     }
+
+    closeCommandMenu();
 };
 
 const duplicateBlock = (index: number) => {
@@ -346,13 +349,41 @@ const executeSelectedCommand = async (index: number) => {
             block.markdown = before + result.markdown + after;
         } else {
             // Fallback
+            // Fallback
             block.markdown = result.markdown;
         }
-        saveBlock(index);
+        // Don't call saveBlock(index) because it exits edit mode.
+        // Instead, just push history and check dirty state.
+        pushHistory();
+        checkDirty();
+
+        // If autosave is enabled, trigger it manually
+        if (autosaveEnabled.value) {
+            triggerAutosave();
+        }
+
+        // Force keep editing and focus
+        if (!block.isEditing) {
+            block.isEditing = true;
+        }
+
+        // Calculate new cursor position
+        // If we replaced a range, cursor should be after the inserted markdown
+        let newCursorPos = block.markdown.length;
+        if (commandRange.value) {
+            newCursorPos = commandRange.value.start + result.markdown.length;
+        }
+
+        nextTick(() => {
+            const el = document.getElementById(`textarea-${index}`) as HTMLTextAreaElement;
+            if (el) {
+                el.focus();
+                el.setSelectionRange(newCursorPos, newCursorPos);
+            }
+        });
     }
 
     closeCommandMenu();
-    // Focus back?
 };
 
 const handlePaste = async (e: ClipboardEvent, index: number) => {
@@ -452,12 +483,14 @@ const updateCommandMenu = (index: number, e?: Event) => {
                     showCommandMenu.value = true;
                     commandRange.value = { start: lastSlashIndex, end: cursor };
 
-                    const el = document.getElementById(`textarea-${index}`);
+                    // Use type assertion for now since we know it's a textarea in this context (EditorBlock)
+                    const el = document.getElementById(`textarea-${index}`) as HTMLTextAreaElement;
                     if (el) {
                         const rect = el.getBoundingClientRect();
+                        const caret = getCaretCoordinates(el, cursor);
                         commandMenuPosition.value = {
-                            x: rect.left, // Can optimize to be near cursor but block left is ok for now
-                            y: rect.top
+                            x: rect.left + caret.left,
+                            y: rect.top + caret.top
                         };
                     }
                     return;

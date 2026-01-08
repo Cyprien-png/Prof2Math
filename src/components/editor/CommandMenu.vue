@@ -34,7 +34,7 @@ const style = computed(() => {
                 <button v-for="(item, index) in items" :key="item.name"
                     class="w-full text-left px-3 py-2 flex items-center justify-between group transition-colors"
                     :class="{ 'bg-blue-50 dark:bg-blue-900/20': index === selectedIndex, 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50': index !== selectedIndex }"
-                    @click.stop="emit('select', index)">
+                    @mousedown.prevent.stop="emit('select', index)">
                     <div class="flex flex-col">
                         <span class="font-mono text-sm font-medium text-neutral-900 dark:text-neutral-100"
                             :class="{ 'text-blue-600 dark:text-blue-400': index === selectedIndex }">
