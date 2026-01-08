@@ -38,6 +38,12 @@ const commandSuggestions = ref<any[]>([]);
 const commandMenuIndex = ref(0);
 const commandRange = ref<{ start: number, end: number } | null>(null);
 
+// Rename Dialog State
+import RenameDialog from './RenameDialog.vue';
+const showRenameDialog = ref(false);
+const renameInitialName = ref('');
+const renameItemNode = ref<FileTreeNode | null>(null);
+
 // File State
 const fileName = ref('untitled');
 const isDirty = ref(false);
@@ -736,13 +742,20 @@ const handleDuplicateItem = async (node: FileTreeNode) => {
     }
 };
 
-const handleRenameItem = async (node: FileTreeNode) => {
-    if (!rootDirectoryHandle.value) return;
+const handleRenameItem = (node: FileTreeNode) => {
+    renameItemNode.value = node;
+    renameInitialName.value = node.kind === 'file' ? node.name.replace(/\.mthd$/, '') : node.name;
+    showRenameDialog.value = true;
+};
 
+const handleConfirmRename = async (newNameInput: string) => {
+    showRenameDialog.value = false;
+    const node = renameItemNode.value;
+    if (!node || !rootDirectoryHandle.value) return;
+
+    // Sanity check
     const currentName = node.name;
     const editableName = node.kind === 'file' ? currentName.replace(/\.mthd$/, '') : currentName;
-
-    const newNameInput = prompt('Enter new name:', editableName);
     if (!newNameInput || newNameInput === editableName) return;
 
     const newName = node.kind === 'file' ? `${newNameInput}.mthd` : newNameInput;
@@ -1063,6 +1076,10 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
         <!-- Dialogs -->
         <SettingsDialog :is-open="showSettings" :current-directory="rootDirectoryHandle?.name"
             @close="showSettings = false" @set-root-directory="handleSetRootDirectory" />
+
+        <RenameDialog v-if="showRenameDialog" :is-open="showRenameDialog" :initial-name="renameInitialName"
+            :title="`Rename ${renameItemNode?.kind || 'item'}`" @close="showRenameDialog = false"
+            @confirm="handleConfirmRename" />
     </div>
 
     <CommandMenu :items="commandSuggestions" :selected-index="commandMenuIndex" :position="commandMenuPosition"
