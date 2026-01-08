@@ -965,10 +965,13 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
         finalName += '.mthd';
     }
 
+    let newHandle: FileSystemFileHandle | null = null;
+
     try {
         if (kind === 'file') {
             // @ts-ignore
             const newFileHandle = await parentHandle.getFileHandle(finalName, { create: true });
+            newHandle = newFileHandle;
             // @ts-ignore
             const writable = await newFileHandle.createWritable();
             await writable.write(DEFAULT_FILE_CONTENT);
@@ -981,17 +984,21 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
         await loadDirectory();
 
         // If file, verify logic to auto-open
-        if (kind === 'file') {
+        if (kind === 'file' && newHandle) {
             // Construct full path for opening
             // If parentPath is empty (root), full path is finalName
             // If parentPath exists, full path is parentPath + '/' + finalName
             const fullPath = parentPath ? `${parentPath}/${finalName}` : finalName;
 
-            // Allow a small delay for tree refresh/re-indexing if needed, though loadDirectory awaits
-            const newNode = findNodeByPath(fileTree.value, fullPath);
-            if (newNode) {
-                handleOpenFileFromTree(newNode);
-            }
+            // Directly open using the handle we just created
+            // This avoids waiting for the tree to index or finding the node
+            const newNode: FileTreeNode = {
+                kind: 'file',
+                name: finalName,
+                path: fullPath,
+                handle: newHandle
+            };
+            handleOpenFileFromTree(newNode);
         }
 
         // If we created inside a folder, we should ensure it's expanded?
