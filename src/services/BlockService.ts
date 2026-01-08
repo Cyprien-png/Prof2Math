@@ -25,6 +25,7 @@ const injectLineNumbers = (md: MarkdownIt) => {
         const token = tokens[idx];
         if (token && token.map && token.level === 0) {
             token.attrPush(['data-source-line', String(token.map[0])]);
+            token.attrPush(['data-source-line-end', String(token.map[1])]);
         }
         return tempRender(tokens, idx, options);
     };
@@ -88,7 +89,7 @@ export class BlockService {
     renderHtml(markdown: string): string {
         return DOMPurify.sanitize(md.render(markdown), {
             ADD_TAGS: ["math", "annotation", "semantics", "mtext", "mn", "mo", "mi", "mspace", "mover", "mstyle", "msub", "msup", "msubsup", "mfrac", "msqrt", "mroot", "mtable", "mtr", "mtd", "merror", "mpadded", "mphantom", "mglyph", "maligngroup", "malignmark", "menclose", "mfenced", "mscarry", "mscarry", "msgroup", "msline", "msrow", "mstack", "mlongdiv"],
-            ADD_ATTR: ['encoding', 'display', 'data-source-line']
+            ADD_ATTR: ['encoding', 'display', 'data-source-line', 'data-source-line-end']
         });
     }
 

@@ -41,6 +41,39 @@ const onPreviewClick = (e: MouseEvent) => {
         if (!isNaN(line)) {
             targetLine.value = line;
         }
+    } else {
+        // Clicked on a gap (margin/padding/empty line)
+        // Find the closest preceding element
+        if (contentRef.value) {
+            const children = Array.from(contentRef.value.querySelectorAll('[data-source-line]'));
+            let closestPrev: HTMLElement | null = null;
+            let minDistance = Infinity; // Find closest bottom to click Y
+
+            // We look for element visually above the click
+            for (const child of children) {
+                const rect = child.getBoundingClientRect();
+                // Check if element is above click
+                if (rect.bottom <= e.clientY) {
+                    const dist = e.clientY - rect.bottom;
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        closestPrev = child as HTMLElement;
+                    }
+                }
+            }
+
+            if (closestPrev) {
+                // Use the END line of the previous element as the target
+                // markdown-it map is [start, end) so end index is the first line of the NEXT block (or the gap)
+                const endLine = parseInt(closestPrev.getAttribute('data-source-line-end') || '', 10);
+                if (!isNaN(endLine)) {
+                    targetLine.value = endLine;
+                }
+            } else {
+                // Clicked above the first element
+                targetLine.value = 0;
+            }
+        }
     }
 
     targetClickY.value = e.clientY;
