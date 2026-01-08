@@ -114,12 +114,13 @@ const rootMenuPosition = ref({ x: 0, y: 0 });
 
 const handleRootContextMenu = (e: MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!props.rootHandle) return;
 
     showRootMenu.value = true;
     rootMenuPosition.value = {
-        x: e.clientX,
-        y: e.clientY
+        x: e.clientX - 10,
+        y: e.clientY - 10
     };
 };
 
