@@ -11,6 +11,8 @@ import { blockService } from '../services/BlockService';
 import { commandService } from '../services/CommandService';
 import CommandMenu from './editor/CommandMenu.vue';
 
+import { DEFAULT_FILE_CONTENT } from '../constants';
+
 // --- Props ---
 const props = defineProps<{
     initialContent?: string;
@@ -42,7 +44,7 @@ const currentFileHandle = ref<FileSystemFileHandle | null>(null);
 const savedContent = ref('');
 
 // Initialize content
-const rawContent = ref(props.initialContent || '<!-- block -->\n# New file\n\nHello world!');
+const rawContent = ref(props.initialContent || DEFAULT_FILE_CONTENT);
 
 // --- Logic ---
 const checkDirty = () => {
@@ -933,7 +935,11 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
     try {
         if (kind === 'file') {
             // @ts-ignore
-            await parentHandle.getFileHandle(finalName, { create: true });
+            const newFileHandle = await parentHandle.getFileHandle(finalName, { create: true });
+            // @ts-ignore
+            const writable = await newFileHandle.createWritable();
+            await writable.write(DEFAULT_FILE_CONTENT);
+            await writable.close();
         } else {
             // @ts-ignore
             await parentHandle.getDirectoryHandle(finalName, { create: true });
