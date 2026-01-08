@@ -4,6 +4,7 @@ import { ref, watch } from 'vue';
 import FileTree from './FileTree.vue';
 import type { FileTreeNode } from '../types';
 import CogIcon from './icons/CogIcon.vue';
+import vClickOutside from '../directives/click-outside';
 
 // Messages
 import NoWorkspaceFound from './messages/sidemenu/NoWorkspaceFound.vue';
