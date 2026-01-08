@@ -6,7 +6,32 @@ import DOMPurify from 'dompurify';
 import 'katex/dist/katex.min.css';
 
 // Initialize core markdown instance
-const md = new MarkdownIt();
+// Initialize core markdown instance
+const md = new MarkdownIt({
+    html: true,
+    linkify: true,
+    typographer: true
+});
+
+// Add line numbers plugin manually (simplified)
+// Or use markdown-it-source-map if available? 
+// Native markdown-it doesn't output line numbers by default in render, only in token stream.
+// We need a custom render rule or plugin.
+// Let's implement a simple rule injection.
+
+const injectLineNumbers = (md: MarkdownIt) => {
+    const tempRender = md.renderer.renderToken.bind(md.renderer);
+    md.renderer.renderToken = (tokens, idx, options) => {
+        const token = tokens[idx];
+        if (token && token.map && token.level === 0) {
+            token.attrPush(['data-source-line', String(token.map[0])]);
+        }
+        return tempRender(tokens, idx, options);
+    };
+};
+
+injectLineNumbers(md);
+
 md.use(texmath, {
     engine: katex,
     delimiters: 'dollars',
@@ -63,7 +88,7 @@ export class BlockService {
     renderHtml(markdown: string): string {
         return DOMPurify.sanitize(md.render(markdown), {
             ADD_TAGS: ["math", "annotation", "semantics", "mtext", "mn", "mo", "mi", "mspace", "mover", "mstyle", "msub", "msup", "msubsup", "mfrac", "msqrt", "mroot", "mtable", "mtr", "mtd", "merror", "mpadded", "mphantom", "mglyph", "maligngroup", "malignmark", "menclose", "mfenced", "mscarry", "mscarry", "msgroup", "msline", "msrow", "mstack", "mlongdiv"],
-            ADD_ATTR: ['encoding', 'display']
+            ADD_ATTR: ['encoding', 'display', 'data-source-line']
         });
     }
 

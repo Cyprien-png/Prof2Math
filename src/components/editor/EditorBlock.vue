@@ -3,6 +3,7 @@ import { nextTick, ref, watch, onMounted } from 'vue';
 import type { Block } from '../../types';
 import BlockActionsMenu from './BlockActionsMenu.vue';
 import { fileService } from '../../services/FileService';
+import { getCaretCoordinates } from '../../utils/caret';
 
 const props = defineProps<{
     block: Block;
@@ -27,15 +28,94 @@ const emit = defineEmits<{
 }>();
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const targetLine = ref<number | null>(null);
+const targetClickY = ref<number | null>(null);
+
+const onPreviewClick = (e: MouseEvent) => {
+    // Try to find the clicked element or its parent with data-source-line
+    const target = e.target as HTMLElement;
+    const lineEl = target.closest('[data-source-line]');
+
+    if (lineEl) {
+        const line = parseInt(lineEl.getAttribute('data-source-line') || '', 10);
+        if (!isNaN(line)) {
+            targetLine.value = line;
+        }
+    }
+
+    targetClickY.value = e.clientY;
+
+    emit('edit', props.index);
+};
 
 // Expose focus method
 const focusTextarea = () => {
     nextTick(() => {
         if (textareaRef.value) {
-            textareaRef.value.focus();
+            textareaRef.value.focus({ preventScroll: true });
+
+            // Smart cursor positioning
+            if (targetLine.value !== null) {
+                const lines = props.block.markdown.split('\n');
+                let charIndex = 0;
+
+                // MarkdownIt lines are 0-indexed
+                for (let i = 0; i < targetLine.value && i < lines.length; i++) {
+                    const lineStr = lines[i];
+                    if (lineStr !== undefined) {
+                        charIndex += lineStr.length + 1; // +1 for newline
+                    }
+                }
+
+                // Clamp to length
+                if (charIndex > props.block.markdown.length) {
+                    charIndex = props.block.markdown.length;
+                }
+
+                textareaRef.value.setSelectionRange(charIndex, charIndex);
+
+                // Scroll to center logic
+                // Use requestAnimationFrame to ensure layout is fully stable
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (textareaRef.value && targetClickY.value !== null) {
+                            const caret = getCaretCoordinates(textareaRef.value, charIndex);
+                            const rect = textareaRef.value.getBoundingClientRect();
+
+                            // Calculate absolute position on page
+                            // rect.top is relative to viewport. window.scrollY is viewport scroll.
+                            // absoluteCaretY = window.scrollY + rect.top + caret.top
+                            const absoluteCaretY = window.scrollY + rect.top + caret.top;
+
+                            const targetScrollY = absoluteCaretY - targetClickY.value;
+
+                            window.scrollTo({
+                                top: targetScrollY,
+                                behavior: 'auto'
+                            });
+
+                            targetClickY.value = null;
+                            targetLine.value = null;
+                        } else if (targetLine.value !== null && textareaRef.value) {
+                            // Fallback centered scroll
+                            const caret = getCaretCoordinates(textareaRef.value, charIndex);
+                            const rect = textareaRef.value.getBoundingClientRect();
+                            const absoluteCaretY = window.scrollY + rect.top + caret.top;
+                            const targetScrollY = absoluteCaretY - (window.innerHeight / 2);
+
+                            window.scrollTo({
+                                top: targetScrollY,
+                                behavior: 'smooth'
+                            });
+                            targetLine.value = null;
+                        }
+                    });
+                });
+            }
         }
     });
 };
+
 
 defineExpose({ focusTextarea });
 
@@ -159,7 +239,6 @@ const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
     onMenuToggle(e);
 }
-
 </script>
 
 <template>
@@ -181,7 +260,7 @@ const onContextMenu = (e: MouseEvent) => {
         </div>
 
         <!-- Preview Mode -->
-        <div v-if="!block.isEditing" @click="emit('edit', index)" ref="contentRef"
+        <div v-if="!block.isEditing" @click="onPreviewClick" ref="contentRef"
             class="prose prose-slate dark:prose-invert max-w-none cursor-text px-8 py-4 rounded min-h-[2rem] border border-neutral-200 dark:border-neutral-700"
             v-html="block.html"></div>
 
