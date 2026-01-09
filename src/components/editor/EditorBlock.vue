@@ -328,8 +328,8 @@ defineExpose({ focusTextarea, contentRef });
 
         <!-- Preview Mode -->
         <div v-if="!block.isEditing" @click="onPreviewClick" ref="contentRef"
-            class="prose prose-slate dark:prose-invert max-w-none cursor-text px-8 py-4 rounded min-h-[2rem] border border-neutral-200 dark:border-neutral-700"
-            v-html="block.html"></div>
+            class="prose prose-slate dark:prose-invert max-w-none px-8 py-4 rounded min-h-[2rem] border border-neutral-200 dark:border-neutral-700"
+            :class="block.type === 'handwriting' ? 'cursor-pointer' : 'cursor-text'" v-html="block.html"></div>
 
         <!-- Edit Mode -->
         <div v-else class="relative w-full">
