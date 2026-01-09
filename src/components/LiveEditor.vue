@@ -557,6 +557,84 @@ const addNextHandwrittenBlock = () => {
     pushHistory();
 }
 
+const convertBlockToHandwriting = async (index: number) => {
+    const block = blocks.value[index];
+    if (!block) return;
+
+    if (!rootDirectoryHandle.value || !currentFilePath.value) {
+        alert("Please save the file to disk first.");
+        return;
+    }
+
+    try {
+        // 1. Generate SVG with HTML background
+        const width = 800; // Default width
+        // Estimate height based on content or default? 
+        // For now, let's pick a reasonable default or try to measure?
+        // Since we don't have the element rect here easily, let's use a safe default height or try to grab it from DOM if possible?
+        // Actually, we can just start with a decent canvas size. 
+        // Better: HandwrittenBlock handles resizing usually. 
+        // But for background, we want it to match the text.
+        // Let's assume a standard height or let the user resize/draw more.
+        const height = 200;
+
+        // Serialize HTML for SVG
+        // We need to wrap it in foreignObject
+        // Ensure styles are somewhat preserved or default to simple text
+        const backgroundHtml = `
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: sans-serif; font-size: 16px; color: #333;">
+                ${block.html}
+            </div>
+        `;
+
+        const timestamp = new Date().getTime();
+        const filename = `drawing_${timestamp}.svg`;
+
+        // Save relative to current file
+        const fileDir = currentFilePath.value.substring(0, currentFilePath.value.lastIndexOf('/'));
+        const currentFileName = currentFilePath.value.split('/').pop()?.replace('.mthd', '') || 'untitled';
+        const imagesDirName = `${currentFileName}___images`;
+        const targetPath = fileDir ? `${fileDir}/${imagesDirName}/${filename}` : `${imagesDirName}/${filename}`;
+
+        // Create initial SVG with background
+        // Note: HandwrittenBlock will need to be able to read this 'backgroundHtml' or we store it in desc?
+        // Plan said: "Embed backgroundHtml in foreignObject"
+        // And "HandwrittenBlock to render backgroundHtml behind canvas"
+
+        // We can create the SVG file content right here:
+        const svgContent = `
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" class="handwritten-block-svg">
+    <foreignObject width="100%" height="100%" x="0" y="0">
+        ${backgroundHtml}
+    </foreignObject>
+    <desc>[]</desc> 
+</svg>`;
+
+        const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+        const file = new File([blob], filename, { type: 'image/svg+xml' });
+
+        await fileService.saveAsset(rootDirectoryHandle.value, targetPath, file);
+
+        // 2. Update block
+        const relativeMarkdownPath = `${imagesDirName}/${filename}`;
+        const encodedPath = encodeURI(relativeMarkdownPath);
+
+        block.type = 'handwriting';
+        block.markdown = `![Drawing](${encodedPath}?t=${timestamp})`;
+        block.isEditing = true; // Switch to edit mode to show the new handwritten block
+
+        pushHistory();
+        checkDirty();
+        if (autosaveEnabled.value) {
+            handleSaveFile();
+        }
+
+    } catch (e) {
+        console.error("Failed to convert block", e);
+        alert("Failed to convert block to handwriting.");
+    }
+};
+
 // --- File System Logic ---
 const rootDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
 const fileTree = ref<FileTreeNode[]>([]);
@@ -1069,7 +1147,8 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
                                 @input="triggerAutosave(); updateCommandMenu(index, $event);" @save="saveBlock(index)"
                                 @menu-toggle="toggleMenu" @duplicate="duplicateBlock(index)"
                                 @remove="removeBlock(index)" @edit="editBlock(index)" @rename="promptRenameBlock(index)"
-                                @keydown="handleKeydown($event, index)" @paste="handlePaste($event, index)" />
+                                @keydown="handleKeydown($event, index)" @paste="handlePaste($event, index)"
+                                @convert="convertBlockToHandwriting(index)" />
 
                             <!-- Add New Block Area -->
                             <div class="flex gap-4 md:opacity-0 hover:opacity-100 transition-all duration-200">

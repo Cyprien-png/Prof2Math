@@ -21,6 +21,7 @@ const ctx = ref<CanvasRenderingContext2D | null>(null);
 // State
 const strokes = ref<{ x: number; y: number }[][]>([]);
 const redoStack = ref<{ x: number; y: number }[][]>([]);
+const backgroundHtml = ref<string>('');
 const currentStroke = ref<{ x: number; y: number }[]>([]);
 const isDrawing = ref(false);
 const isPanning = ref(false);
@@ -407,6 +408,7 @@ const generateSvg = () => {
 
     const svg = `
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" stroke="black" fill="none" class="handwritten-block-svg">
+    ${backgroundHtml.value ? `<foreignObject width="100%" height="100%" x="0" y="0">${backgroundHtml.value}</foreignObject>` : ''}
     <desc>${encodedStrokes}</desc>
     <path d="${pathData}" stroke-width="${LINE_WIDTH}" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
@@ -488,13 +490,19 @@ const loadFromMarkdown = async (markdown: string) => {
         const text = await file.text();
 
         // Parse SVG to find desc
+        // Parse SVG to find desc and background
         const parser = new DOMParser();
         const doc = parser.parseFromString(text, 'image/svg+xml');
         const desc = doc.querySelector('desc');
+        const foreignObject = doc.querySelector('foreignObject');
 
         if (desc && desc.textContent) {
             strokes.value = JSON.parse(desc.textContent);
             drawAll();
+        }
+
+        if (foreignObject) {
+            backgroundHtml.value = foreignObject.innerHTML;
         }
     } catch (e) {
         console.error("Failed to load existing drawing strokes", e);
@@ -516,6 +524,12 @@ const loadFromMarkdown = async (markdown: string) => {
         <div class="absolute top-2 right-2 z-10 flex gap-2 bg-white/80 p-1 rounded shadow text-xs text-neutral-500">
             <span>Space+Drag to Pan</span>
             <span>Ctrl+Scroll to Zoom</span>
+        </div>
+
+        <!-- Background Content (Text) -->
+        <div v-if="backgroundHtml" class="absolute top-0 left-0 w-full h-full pointer-events-none"
+            :style="{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0' }">
+            <div v-html="backgroundHtml"></div>
         </div>
 
         <canvas ref="canvasRef" class="w-full h-full cursor-crosshair touch-none" @mousedown="startDrawing"

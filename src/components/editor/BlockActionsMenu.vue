@@ -11,6 +11,7 @@ const emit = defineEmits<{
     (e: 'duplicate'): void;
     (e: 'rename'): void;
     (e: 'delete'): void;
+    (e: 'convert'): void;
     (e: 'mouseenter'): void;
     (e: 'mouseleave'): void;
 }>();
@@ -51,6 +52,11 @@ const style = computed(() => {
                 <button @click.stop="emit('duplicate')"
                     class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
                     Duplicate
+                </button>
+
+                <button @click.stop="emit('convert')"
+                    class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                    Convert to handwriting
                 </button>
 
                 <div class="h-px bg-neutral-200 dark:bg-neutral-700 my-1"></div>
