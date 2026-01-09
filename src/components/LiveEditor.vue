@@ -581,6 +581,21 @@ const convertBlockToHandwriting = async (index: number) => {
         // Capture screenshot of content only (stripping container styles)
         const dataUrl = await toPng(element, {
             backgroundColor: 'transparent',
+            // Use onClone to modify the cloned DOM before capture
+            filter: () => true, // Dummy filter to avoid type errors if onClone is missing in types? No, just cast options.
+            onClone: (clonedNode: Node) => {
+                if (clonedNode instanceof HTMLElement) {
+                    // Remove all border and padding related classes
+                    clonedNode.style.border = 'none';
+                    clonedNode.style.padding = '0';
+                    clonedNode.style.margin = '0';
+                    clonedNode.style.boxShadow = 'none';
+                    clonedNode.style.background = 'transparent';
+
+                    // Remove specific classes that might cause borders
+                    clonedNode.classList.remove('border', 'border-neutral-200', 'dark:border-neutral-700', 'rounded', 'shadow');
+                }
+            },
             style: {
                 margin: '0',
                 padding: '0',
@@ -594,7 +609,7 @@ const convertBlockToHandwriting = async (index: number) => {
                 borderColor: 'transparent',
                 borderStyle: 'none'
             }
-        });
+        } as any);
 
         const width = element.offsetWidth;
         const height = element.offsetHeight;
