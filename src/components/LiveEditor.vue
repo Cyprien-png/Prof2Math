@@ -578,10 +578,16 @@ const convertBlockToHandwriting = async (index: number) => {
     }
 
     try {
-        // Capture screenshot
+        // Capture screenshot of content only (stripping container styles)
         const dataUrl = await toPng(element, {
             backgroundColor: 'transparent',
-            style: { margin: '0' } // helper to avoid margin issues
+            style: {
+                margin: '0',
+                border: 'none',
+                boxShadow: 'none',
+                borderRadius: '0',
+                background: 'transparent'
+            }
         });
 
         const width = element.offsetWidth;
