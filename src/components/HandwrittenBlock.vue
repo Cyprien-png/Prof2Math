@@ -529,7 +529,7 @@ const loadFromMarkdown = async (markdown: string) => {
         <!-- Background Content (Text) -->
         <div v-if="backgroundHtml" class="absolute top-0 left-0 w-full h-full pointer-events-none"
             :style="{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0' }">
-            <div v-html="backgroundHtml"></div>
+            <div class="prose prose-slate dark:prose-invert max-w-none px-8 py-4" v-html="backgroundHtml"></div>
         </div>
 
         <canvas ref="canvasRef" class="w-full h-full cursor-crosshair touch-none" @mousedown="startDrawing"
