@@ -583,11 +583,16 @@ const convertBlockToHandwriting = async (index: number) => {
             backgroundColor: 'transparent',
             style: {
                 margin: '0',
+                padding: '0',
                 border: 'none',
+                outline: 'none',
                 boxShadow: 'none',
                 borderRadius: '0',
                 background: 'transparent',
-                padding: '0'
+                // Explicitly reset border properties to override any shorthands or specificities
+                borderWidth: '0',
+                borderColor: 'transparent',
+                borderStyle: 'none'
             }
         });
 
