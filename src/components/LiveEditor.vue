@@ -735,7 +735,7 @@ const convertBlockToTextual = async (index: number) => {
             model = openai('gpt-4o');
         } else if (provider === 'google') {
             const google = createGoogleGenerativeAI({ apiKey });
-            model = google('models/gemini-1.5-flash-latest');
+            model = google('gemini-3-flash-preview');
         } else if (provider === 'anthropic') {
             const anthropic = createAnthropic({ apiKey });
             model = anthropic('claude-3-5-sonnet-20240620');
