@@ -10,6 +10,8 @@ import { fileService } from '../services/FileService';
 import { blockService } from '../services/BlockService';
 import { commandService } from '../services/CommandService';
 import CommandMenu from './editor/CommandMenu.vue';
+import H1Icon from './icons/H1Icon.vue';
+import PencilIcon from './icons/PencilIcon.vue';
 
 import { DEFAULT_FILE_CONTENT } from '../constants';
 import { getCaretCoordinates } from '../utils/caret';
@@ -1070,14 +1072,16 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
                                 @keydown="handleKeydown($event, index)" @paste="handlePaste($event, index)" />
 
                             <!-- Add New Block Area -->
-                            <div class="flex gap-4 opacity-0 hover:opacity-100 transition-all duration-200">
+                            <div class="flex gap-4 md:opacity-0 hover:opacity-100 transition-all duration-200">
                                 <div @click="addNextBlock"
-                                    class="flex-1 h-12 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded flex items-center justify-center text-neutral-400">
-                                    <span class="text-sm">+ Add new block</span>
+                                    class="flex-1 h-12 gap-2 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded flex items-center justify-center text-neutral-400">
+                                    <H1Icon class="size-3" />
+                                    <span class="text-sm">Add textual block</span>
                                 </div>
                                 <div @click="addNextHandwrittenBlock"
-                                    class="flex-1 h-12 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded flex items-center justify-center text-neutral-400">
-                                    <span class="text-sm">+ Add new handwritten block</span>
+                                    class="flex-1 h-12 gap-2 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded flex items-center justify-center text-neutral-400">
+                                    <PencilIcon class="size-3" />
+                                    <span class="text-sm">Add handwritten block</span>
                                 </div>
                             </div>
                         </div>
