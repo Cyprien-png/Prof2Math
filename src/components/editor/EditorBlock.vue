@@ -182,7 +182,7 @@ const focusTextarea = () => {
 };
 
 
-defineExpose({ focusTextarea });
+
 
 // Watch for edit mode to focus and resize
 watch(() => props.block.isEditing, (newVal) => {
@@ -304,6 +304,8 @@ const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
     onMenuToggle(e);
 }
+
+defineExpose({ focusTextarea, contentRef });
 </script>
 
 <template>

@@ -21,7 +21,7 @@ const ctx = ref<CanvasRenderingContext2D | null>(null);
 // State
 const strokes = ref<{ x: number; y: number }[][]>([]);
 const redoStack = ref<{ x: number; y: number }[][]>([]);
-const backgroundHtml = ref<string>('');
+const backgroundImage = ref<string>(''); // Data URL
 const currentStroke = ref<{ x: number; y: number }[]>([]);
 const isDrawing = ref(false);
 const isPanning = ref(false);
@@ -408,7 +408,7 @@ const generateSvg = () => {
 
     const svg = `
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" stroke="black" fill="none" class="handwritten-block-svg">
-    ${backgroundHtml.value ? `<foreignObject width="100%" height="100%" x="0" y="0">${backgroundHtml.value}</foreignObject>` : ''}
+    ${backgroundImage.value ? `<image href="${backgroundImage.value}" x="0" y="0" width="${width}" height="${height}" />` : ''}
     <desc>${encodedStrokes}</desc>
     <path d="${pathData}" stroke-width="${LINE_WIDTH}" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
@@ -494,15 +494,18 @@ const loadFromMarkdown = async (markdown: string) => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(text, 'image/svg+xml');
         const desc = doc.querySelector('desc');
-        const foreignObject = doc.querySelector('foreignObject');
+        const image = doc.querySelector('image');
 
         if (desc && desc.textContent) {
             strokes.value = JSON.parse(desc.textContent);
             drawAll();
         }
 
-        if (foreignObject) {
-            backgroundHtml.value = foreignObject.innerHTML;
+        if (image) {
+            const href = image.getAttribute('href') || image.getAttribute('xlink:href'); // xlink for compatibility
+            if (href) {
+                backgroundImage.value = href;
+            }
         }
     } catch (e) {
         console.error("Failed to load existing drawing strokes", e);
@@ -527,9 +530,10 @@ const loadFromMarkdown = async (markdown: string) => {
         </div>
 
         <!-- Background Content (Text) -->
-        <div v-if="backgroundHtml" class="absolute top-0 left-0 w-full h-full pointer-events-none"
+        <!-- Background Content (Image) -->
+        <div v-if="backgroundImage" class="absolute top-0 left-0 w-full h-full pointer-events-none"
             :style="{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0' }">
-            <div class="prose prose-slate dark:prose-invert max-w-none px-8 py-4" v-html="backgroundHtml"></div>
+            <img :src="backgroundImage" class="w-full h-full object-contain" alt="Background" />
         </div>
 
         <canvas ref="canvasRef" class="w-full h-full cursor-crosshair touch-none" @mousedown="startDrawing"

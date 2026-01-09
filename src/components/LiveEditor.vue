@@ -15,6 +15,7 @@ import PencilIcon from './icons/PencilIcon.vue';
 
 import { DEFAULT_FILE_CONTENT } from '../constants';
 import { getCaretCoordinates } from '../utils/caret';
+import { toPng } from 'html-to-image';
 
 // --- Props ---
 const props = defineProps<{
@@ -23,6 +24,7 @@ const props = defineProps<{
 
 // --- State ---
 const blocks = ref<Block[]>([]);
+const editorBlockRefs = ref<any[]>([]); // Using any to avoid strict typing issues with InstanceType for now
 const activeMenuBlockId = ref<string | null>(null);
 
 // History State
@@ -566,26 +568,24 @@ const convertBlockToHandwriting = async (index: number) => {
         return;
     }
 
-    try {
-        // 1. Generate SVG with HTML background
-        const width = 800; // Default width
-        // Estimate height based on content or default? 
-        // For now, let's pick a reasonable default or try to measure?
-        // Since we don't have the element rect here easily, let's use a safe default height or try to grab it from DOM if possible?
-        // Actually, we can just start with a decent canvas size. 
-        // Better: HandwrittenBlock handles resizing usually. 
-        // But for background, we want it to match the text.
-        // Let's assume a standard height or let the user resize/draw more.
-        const height = 200;
+    // Get the element to capture
+    const blockRef = editorBlockRefs.value[index];
+    const element = blockRef?.contentRef; // contentRef exposed by EditorBlock
 
-        // Serialize HTML for SVG
-        // We need to wrap it in foreignObject
-        // Ensure styles are somewhat preserved or default to simple text
-        const backgroundHtml = `
-            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: sans-serif; font-size: 16px; color: #333;">
-                ${block.html}
-            </div>
-        `;
+    if (!element) {
+        console.error("Could not find block element to capture");
+        return;
+    }
+
+    try {
+        // Capture screenshot
+        const dataUrl = await toPng(element, {
+            backgroundColor: 'transparent',
+            style: { margin: '0' } // helper to avoid margin issues
+        });
+
+        const width = element.offsetWidth;
+        const height = element.offsetHeight;
 
         const timestamp = new Date().getTime();
         const filename = `drawing_${timestamp}.svg`;
@@ -596,20 +596,14 @@ const convertBlockToHandwriting = async (index: number) => {
         const imagesDirName = `${currentFileName}___images`;
         const targetPath = fileDir ? `${fileDir}/${imagesDirName}/${filename}` : `${imagesDirName}/${filename}`;
 
-        // Create initial SVG with background
-        // Note: HandwrittenBlock will need to be able to read this 'backgroundHtml' or we store it in desc?
-        // Plan said: "Embed backgroundHtml in foreignObject"
-        // And "HandwrittenBlock to render backgroundHtml behind canvas"
-
-        // We can create the SVG file content right here:
+        // Create initial SVG with background IMAGE
+        // We use a simple structure that HandwrittenBlock will parse
         const svgContent = `
-<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" class="handwritten-block-svg">
-    <foreignObject width="100%" height="100%" x="0" y="0">
-        ${backgroundHtml}
-    </foreignObject>
-    <desc>[]</desc> 
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" stroke="black" fill="none" class="handwritten-block-svg">
+    <image href="${dataUrl}" x="0" y="0" width="${width}" height="${height}" />
+    <desc>[]</desc>
+    <path d="" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
-
         const blob = new Blob([svgContent], { type: 'image/svg+xml' });
         const file = new File([blob], filename, { type: 'image/svg+xml' });
 
@@ -1141,7 +1135,8 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
                 <div class="flex-1 overflow-y-auto w-full">
                     <div class="max-w-3xl mx-auto py-12 px-6">
                         <div class="space-y-4">
-                            <EditorBlock v-for="(block, index) in blocks" :key="block.id" :block="block" :index="index"
+                            <EditorBlock v-for="(block, index) in blocks" :key="block.id"
+                                :ref="(el: any) => editorBlockRefs[index] = el" :block="block" :index="index"
                                 :active-menu-block-id="activeMenuBlockId" :root-handle="rootDirectoryHandle"
                                 :current-file-path="currentFilePath" @update:block="saveBlock(index)"
                                 @input="triggerAutosave(); updateCommandMenu(index, $event);" @save="saveBlock(index)"
