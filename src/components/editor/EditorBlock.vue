@@ -22,6 +22,7 @@ const emit = defineEmits<{
     (e: 'rename', index: number): void;
     (e: 'remove', index: number): void;
     (e: 'convert', index: number): void;
+    (e: 'convertToTextual', index: number): void;
     (e: 'menu-toggle', id: string | null): void;
     (e: 'input', event: Event): void;
     (e: 'keydown', event: KeyboardEvent, index: number): void;
@@ -323,7 +324,8 @@ defineExpose({ focusTextarea, contentRef });
         <div class="absolute top-1 right-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
             <BlockActionsMenu :is-open="activeMenuBlockId === block.id" :position="menuPosition" @toggle="onMenuToggle"
                 @mouseenter="onMenuMouseEnter" @mouseleave="onMenuMouseLeave" @duplicate="emit('duplicate', index)"
-                @rename="emit('rename', index)" @delete="emit('remove', index)" @convert="emit('convert', index)" />
+                @rename="emit('rename', index)" @delete="emit('remove', index)" @convert="emit('convert', index)"
+                @convert-to-textual="emit('convertToTextual', index)" />
         </div>
 
         <!-- Preview Mode -->

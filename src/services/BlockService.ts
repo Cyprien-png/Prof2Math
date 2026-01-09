@@ -155,6 +155,15 @@ export class BlockService {
             type: original.type // preserve type
         };
     }
+
+    updateBlock(block: Block, updates: Partial<Block>): void {
+        Object.assign(block, updates);
+        // If markdown or type is updated, re-render might be needed (though renderHtml handles content)
+        // If we update content/markdown, we should ensure html is sync.
+        if (updates.markdown !== undefined) {
+            block.html = this.renderHtml(updates.markdown);
+        }
+    }
 }
 
 export const blockService = new BlockService();

@@ -13,6 +13,7 @@ const emit = defineEmits<{
     (e: 'rename'): void;
     (e: 'delete'): void;
     (e: 'convert'): void;
+    (e: 'convertToTextual'): void;
     (e: 'mouseenter'): void;
     (e: 'mouseleave'): void;
 }>();
@@ -60,11 +61,11 @@ const style = computed(() => {
                     Convert to handwriting
                 </button>
 
-                <!-- <button @click.stop="emit('convertToTextual')"
+                <button @click.stop="emit('convertToTextual')"
                     class="w-full flex items-center gap-1 bg-gradient-to-br from-purple-500 hover:to-purple-700 to-blue-500 text-white text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700">
                     <RobotIcon class="size-3" />
                     Convert to textual
-                </button> -->
+                </button>
 
                 <div class="h-px bg-neutral-200 dark:bg-neutral-700 my-1"></div>
 

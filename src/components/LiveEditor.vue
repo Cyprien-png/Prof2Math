@@ -16,6 +16,11 @@ import PencilIcon from './icons/PencilIcon.vue';
 import { DEFAULT_FILE_CONTENT } from '../constants';
 import { getCaretCoordinates } from '../utils/caret';
 import { toPng } from 'html-to-image';
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { PROMPTS } from '../prompts';
 
 // --- Props ---
 const props = defineProps<{
@@ -651,10 +656,16 @@ const convertBlockToHandwriting = async (index: number) => {
         // 2. Update block
         const relativeMarkdownPath = `${imagesDirName}/${filename}`;
         const encodedPath = encodeURI(relativeMarkdownPath);
+        const newImageMarkdown = `![Drawing](${encodedPath}?t=${timestamp})`;
 
-        block.type = 'handwriting';
-        block.markdown = `![Drawing](${encodedPath}?t=${timestamp})`;
-        block.isEditing = true; // Switch to edit mode to show the new handwritten block
+        // Update block
+        blockService.updateBlock(block, {
+            type: 'handwriting',
+            markdown: newImageMarkdown
+        });
+
+        // Switch to edit mode for the new handwritten block
+        block.isEditing = true;
 
         pushHistory();
         checkDirty();
@@ -663,8 +674,106 @@ const convertBlockToHandwriting = async (index: number) => {
         }
 
     } catch (e) {
-        console.error("Failed to convert block", e);
+        console.error("Failed to convert block to handwriting", e);
         alert("Failed to convert block to handwriting.");
+    }
+};
+
+const convertBlockToTextual = async (index: number) => {
+    const block = blocks.value[index];
+    if (!block || block.type !== 'handwriting') return;
+
+    // 1. Get AI Settings
+    const provider = localStorage.getItem('mathdown_ai_provider');
+    const apiKey = localStorage.getItem('mathdown_ai_api_key');
+
+    if (!apiKey) {
+        alert("Please configure your AI settings first (Settings > AI Integration).");
+        return;
+    }
+
+    // 2. Capture the Image
+    const blockRef = editorBlockRefs.value[index];
+    // For OCR we want the actual visual representation of the handwritten block
+    // contentRef in EditorBlock points to PREVIEW mode.
+    // If we are in edit mode (canvas), contentRef might be hidden or different.
+    // Ideally we convert when not editing, or force capture of the canvas.
+    // However, HandwrittenBlock usage in list shows the component.
+    // Let's assume user triggers this from menu, so block might be hovered.
+    // If block is NOT editing, it shows the background image + strokes (HandwrittenBlock is rendered via Preview div? No).
+    // In EditorBlock:
+    // If type === 'handwriting':
+    //   If !isEditing: "Preview Mode" div (v-html="block.html") is rendered.
+    //   BUT `block.html` for handwriting type only has "![Drawing](...)" markdown converted to HTML <img>.
+    //   It does NOT contain the live strokes unless they were saved into the image.
+    //   Our implementation saves strokes into the SVG file itself.
+    //   So `block.html` renders an `<img>` pointing to `.svg`.
+    //   The browser renders the SVG.
+    //   So capturing `contentRef` (the div containing the img) should capture the SVG.
+    //   AND since we switched to screenshot background, the SVG contains the background text image.
+    //   So capturing the `contentRef` should give us the full visual (Text Image + Strokes).
+    //   PERFECT.
+
+    const element = blockRef?.contentRef;
+    if (!element) {
+        console.error("Could not find block element to capture");
+        return;
+    }
+
+    try {
+        // Indicate loading state (optional, maybe global spinner or toast?)
+        // For now just console log
+        console.log("Capturing block for OCR...");
+
+        const dataUrl = await toPng(element, { backgroundColor: 'white' });
+
+        // 3. Initialize AI
+        let model;
+
+        if (provider === 'openai') {
+            const openai = createOpenAI({ apiKey, dangerouslyAllowBrowser: true } as any);
+            model = openai('gpt-4o');
+        } else if (provider === 'google') {
+            const google = createGoogleGenerativeAI({ apiKey });
+            model = google('models/gemini-1.5-flash-latest');
+        } else if (provider === 'anthropic') {
+            const anthropic = createAnthropic({ apiKey });
+            model = anthropic('claude-3-5-sonnet-20240620');
+        }
+
+        if (!model) throw new Error("Invalid provider selected");
+
+        console.log("Sending to AI...");
+
+        // 4. Call AI with Image
+        const { text } = await generateText({
+            model,
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: PROMPTS.HANDWRITING_OCR },
+                        { type: 'image', image: dataUrl }
+                    ]
+                }
+            ]
+        });
+
+        console.log("AI Response:", text);
+
+        if (text) {
+            // 5. Replace Block
+            blockService.updateBlock(block, {
+                type: 'text',
+                markdown: text.trim()
+            });
+            // Update blocks list reference to trigger reactivity if needed
+            // blockService.updateBlock mutates the array in place, so vue should pick it up.
+        }
+
+    } catch (e: any) {
+        console.error("OCR Failed", e);
+        alert(`OCR Failed: ${e.message}`);
     }
 };
 
@@ -1182,7 +1291,8 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
                                 @menu-toggle="toggleMenu" @duplicate="duplicateBlock(index)"
                                 @remove="removeBlock(index)" @edit="editBlock(index)" @rename="promptRenameBlock(index)"
                                 @keydown="handleKeydown($event, index)" @paste="handlePaste($event, index)"
-                                @convert="convertBlockToHandwriting(index)" />
+                                @convert="convertBlockToHandwriting(index)"
+                                @convert-to-textual="convertBlockToTextual(index)" />
 
                             <!-- Add New Block Area -->
                             <div class="flex gap-4 md:opacity-0 hover:opacity-100 transition-all duration-200">
