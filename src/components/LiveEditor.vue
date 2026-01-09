@@ -586,7 +586,8 @@ const convertBlockToHandwriting = async (index: number) => {
                 border: 'none',
                 boxShadow: 'none',
                 borderRadius: '0',
-                background: 'transparent'
+                background: 'transparent',
+                padding: '0'
             }
         });
 

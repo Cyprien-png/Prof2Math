@@ -22,6 +22,8 @@ const ctx = ref<CanvasRenderingContext2D | null>(null);
 const strokes = ref<{ x: number; y: number }[][]>([]);
 const redoStack = ref<{ x: number; y: number }[][]>([]);
 const backgroundImage = ref<string>(''); // Data URL
+const bgImageWidth = ref<number>(0);
+const bgImageHeight = ref<number>(0);
 const currentStroke = ref<{ x: number; y: number }[]>([]);
 const isDrawing = ref(false);
 const isPanning = ref(false);
@@ -372,11 +374,20 @@ const handleWheel = (e: WheelEvent) => {
 // IO
 const generateSvg = () => {
     // Calculate bounding box
+    // Start with image bounds if present, else Infinity (reversed)
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    if (backgroundImage.value && bgImageWidth.value > 0 && bgImageHeight.value > 0) {
+        minX = 0;
+        minY = 0;
+        maxX = bgImageWidth.value;
+        maxY = bgImageHeight.value;
+    }
 
     const allStrokes = [...strokes.value, ...((currentStroke.value.length > 0) ? [currentStroke.value] : [])];
 
-    if (allStrokes.length === 0) return null;
+    // If no image and no strokes, return null but allow just image
+    if (allStrokes.length === 0 && !backgroundImage.value) return null;
 
     for (const stroke of allStrokes) {
         for (const p of stroke) {
@@ -406,9 +417,13 @@ const generateSvg = () => {
     const strokeJson = JSON.stringify(strokes.value);
     const encodedStrokes = strokeJson.replace(/"/g, '&quot;');
 
+    // Image position relative to new bounding box
+    const imgX = 0 - minX;
+    const imgY = 0 - minY;
+
     const svg = `
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" stroke="black" fill="none" class="handwritten-block-svg">
-    ${backgroundImage.value ? `<image href="${backgroundImage.value}" x="0" y="0" width="${width}" height="${height}" />` : ''}
+    ${backgroundImage.value ? `<image href="${backgroundImage.value}" x="${imgX}" y="${imgY}" width="${bgImageWidth.value}" height="${bgImageHeight.value}" />` : ''}
     <desc>${encodedStrokes}</desc>
     <path d="${pathData}" stroke-width="${LINE_WIDTH}" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
@@ -503,8 +518,13 @@ const loadFromMarkdown = async (markdown: string) => {
 
         if (image) {
             const href = image.getAttribute('href') || image.getAttribute('xlink:href'); // xlink for compatibility
+            const w = parseFloat(image.getAttribute('width') || '0');
+            const h = parseFloat(image.getAttribute('height') || '0');
+
             if (href) {
                 backgroundImage.value = href;
+                bgImageWidth.value = w;
+                bgImageHeight.value = h;
             }
         }
     } catch (e) {
@@ -531,9 +551,11 @@ const loadFromMarkdown = async (markdown: string) => {
 
         <!-- Background Content (Text) -->
         <!-- Background Content (Image) -->
+        <!-- Background Content (Image) -->
         <div v-if="backgroundImage" class="absolute top-0 left-0 w-full h-full pointer-events-none"
             :style="{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0' }">
-            <img :src="backgroundImage" class="w-full h-full object-contain" alt="Background" />
+            <img :src="backgroundImage" :style="{ width: bgImageWidth + 'px', height: bgImageHeight + 'px' }"
+                class="absolute top-0 left-0 object-contain pointer-events-none" alt="Background" />
         </div>
 
         <canvas ref="canvasRef" class="w-full h-full cursor-crosshair touch-none" @mousedown="startDrawing"
