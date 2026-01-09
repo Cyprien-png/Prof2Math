@@ -13,8 +13,12 @@ const emit = defineEmits<{
 
 const isDark = ref(false);
 const autosaveEnabled = ref(false);
-const activeTab = ref<'general' | 'files'>('general');
+const activeTab = ref<'general' | 'files' | 'ai'>('general');
 // const currentDirectoryName = ref<string | null>(null); // Use prop instead
+
+// AI Settings
+const aiProvider = ref('openai');
+const aiApiKey = ref('');
 
 const handleSelectDirectory = async () => {
     try {
@@ -61,7 +65,19 @@ onMounted(() => {
     if (localStorage.getItem('mathdown_autosave') === 'true') {
         autosaveEnabled.value = true;
     }
+
+    if (localStorage.getItem('mathdown_ai_provider')) {
+        aiProvider.value = localStorage.getItem('mathdown_ai_provider') || 'openai';
+    }
+    if (localStorage.getItem('mathdown_ai_api_key')) {
+        aiApiKey.value = localStorage.getItem('mathdown_ai_api_key') || '';
+    }
 });
+
+const saveAiSettings = () => {
+    localStorage.setItem('mathdown_ai_provider', aiProvider.value);
+    localStorage.setItem('mathdown_ai_api_key', aiApiKey.value);
+};
 </script>
 
 <template>
@@ -87,7 +103,11 @@ onMounted(() => {
                         :class="activeTab === 'files' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800'">
                         Local Files
                     </button>
-                    <!-- Add more tabs here -->
+                    <button @click="activeTab = 'ai'"
+                        class="w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                        :class="activeTab === 'ai' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800'">
+                        AI Integration
+                    </button>
                 </nav>
             </div>
 
@@ -96,7 +116,8 @@ onMounted(() => {
                 <!-- Header -->
                 <div class="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-700">
                     <h3 class="text-lg font-medium text-neutral-800 dark:text-neutral-100">
-                        {{ activeTab === 'general' ? 'General Settings' : 'Local Files' }}
+                        {{ activeTab === 'general' ? 'General Settings' : activeTab === 'files' ? 'Local Files' : 'AI
+                        Integration' }}
                     </h3>
                     <button @click="emit('close')"
                         class="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">
@@ -155,6 +176,29 @@ onMounted(() => {
                             Current: <span class="font-mono bg-neutral-100 dark:bg-neutral-900 px-1 rounded">{{
                                 currentDirectory }}</span>
                         </p>
+                    </div>
+
+                    <!-- AI Tab -->
+                    <div v-if="activeTab === 'ai'" class="space-y-4">
+                        <div class="space-y-2">
+                            <label
+                                class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Provider</label>
+                            <select v-model="aiProvider" @change="saveAiSettings"
+                                class="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-neutral-900 dark:text-neutral-100">
+                                <option value="openai">OpenAI (ChatGPT)</option>
+                                <option value="google">Google (Gemini)</option>
+                                <option value="anthropic">Anthropic (Claude)</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">API
+                                Key</label>
+                            <input type="password" v-model="aiApiKey" @input="saveAiSettings" placeholder="sk-..."
+                                class="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500" />
+                            <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                                Your API key is stored locally in your browser and never sent to our servers.
+                            </p>
+                        </div>
                     </div>
 
                 </div>
