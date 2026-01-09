@@ -679,6 +679,9 @@ const convertBlockToHandwriting = async (index: number) => {
     }
 };
 
+// --- AI Logic ---
+const isProcessingAi = ref(false);
+
 const convertBlockToTextual = async (index: number) => {
     const block = blocks.value[index];
     if (!block || block.type !== 'handwriting') return;
@@ -721,6 +724,7 @@ const convertBlockToTextual = async (index: number) => {
     }
 
     try {
+        isProcessingAi.value = true;
         // Indicate loading state (optional, maybe global spinner or toast?)
         // For now just console log
         console.log("Capturing block for OCR...");
@@ -774,6 +778,8 @@ const convertBlockToTextual = async (index: number) => {
     } catch (e: any) {
         console.error("OCR Failed", e);
         alert(`OCR Failed: ${e.message}`);
+    } finally {
+        isProcessingAi.value = false;
     }
 };
 
@@ -1275,7 +1281,29 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
             @create-folder="handleCreateNewItem($event, 'directory')" />
 
         <!-- Main Content (Flex Column) -->
-        <div class="flex-1 flex flex-col min-w-0 relative">
+        <!-- Loading Overlay -->
+        <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0"
+            enter-to-class="opacity-100" leave-active-class="transition duration-150 ease-in"
+            leave-from-class="opacity-100" leave-to-class="opacity-0">
+            <div v-if="isProcessingAi"
+                class="absolute inset-0 z-50 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm rounded-lg">
+                <div
+                    class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 shadow-xl rounded-xl px-8 py-6 flex flex-col items-center gap-4">
+                    <div class="relative size-12">
+                        <div class="absolute inset-0 rounded-full border-4 border-neutral-100 dark:border-neutral-800">
+                        </div>
+                        <div
+                            class="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin">
+                        </div>
+                    </div>
+                    <div class="text-neutral-600 dark:text-neutral-300 font-medium animate-pulse">
+                        Transcribing handwriting...
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
+        <div class="flex-1 flex flex-col min-w-0 bg-white dark:bg-neutral-900 overflow-hidden relative">
             <template v-if="currentFileHandle">
                 <!-- Top Bar -->
                 <TopBar :filename="fileName" :is-dirty="isDirty" @save="handleSaveFile" />
