@@ -17,10 +17,8 @@ import { DEFAULT_FILE_CONTENT } from '../constants';
 import { getCaretCoordinates } from '../utils/caret';
 import { toPng } from 'html-to-image';
 import { generateText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { PROMPTS } from '../prompts';
+import { aiService } from '../services/AiService';
 
 // --- Props ---
 const props = defineProps<{
@@ -686,15 +684,6 @@ const convertBlockToTextual = async (index: number) => {
     const block = blocks.value[index];
     if (!block || block.type !== 'handwriting') return;
 
-    // 1. Get AI Settings
-    const provider = localStorage.getItem('mathdown_ai_provider');
-    const apiKey = localStorage.getItem('mathdown_ai_api_key');
-
-    if (!apiKey) {
-        alert("Please configure your AI settings first (Settings > AI Integration).");
-        return;
-    }
-
     // 2. Capture the Image
     const blockRef = editorBlockRefs.value[index];
     // For OCR we want the actual visual representation of the handwritten block
@@ -731,21 +720,8 @@ const convertBlockToTextual = async (index: number) => {
 
         const dataUrl = await toPng(element, { backgroundColor: 'white' });
 
-        // 3. Initialize AI
-        let model;
-
-        if (provider === 'openai') {
-            const openai = createOpenAI({ apiKey, dangerouslyAllowBrowser: true } as any);
-            model = openai('gpt-4o');
-        } else if (provider === 'google') {
-            const google = createGoogleGenerativeAI({ apiKey });
-            model = google('gemini-3-flash-preview');
-        } else if (provider === 'anthropic') {
-            const anthropic = createAnthropic({ apiKey });
-            model = anthropic('claude-3-5-sonnet-20240620');
-        }
-
-        if (!model) throw new Error("Invalid provider selected");
+        // 3. Get AI Model
+        const model = aiService.getModel();
 
         console.log("Sending to AI...");
 

@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { generateText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { PROMPTS } from '../prompts';
+import { aiService } from '../services/AiService';
 
 const props = defineProps<{
     isOpen: boolean;
@@ -98,20 +96,9 @@ const testAiConnection = async () => {
     aiTestError.value = null;
 
     try {
-        let model;
+        const model = aiService.getModel();
 
-        if (aiProvider.value === 'openai') {
-            const openai = createOpenAI({ apiKey: aiApiKey.value, dangerouslyAllowBrowser: true } as any);
-            model = openai('gpt-4o');
-        } else if (aiProvider.value === 'google') {
-            const google = createGoogleGenerativeAI({ apiKey: aiApiKey.value });
-            model = google('gemini-3-flash-preview');
-        } else if (aiProvider.value === 'anthropic') {
-            const anthropic = createAnthropic({ apiKey: aiApiKey.value });
-            model = anthropic('claude-3-5-sonnet-20240620');
-        }
-
-        if (!model) throw new Error("Invalid provider selected");
+        // Note: We don't check !model here because aiService throws if invalid.
 
         const { text } = await generateText({
             model,
