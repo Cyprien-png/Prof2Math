@@ -570,50 +570,62 @@ const convertBlockToHandwriting = async (index: number) => {
 
     // Get the element to capture
     const blockRef = editorBlockRefs.value[index];
-    const element = blockRef?.contentRef; // contentRef exposed by EditorBlock
+    const sourceElement = blockRef?.contentRef; // contentRef exposed by EditorBlock
 
-    if (!element) {
+    if (!sourceElement) {
         console.error("Could not find block element to capture");
         return;
     }
 
+    // Create a temporary container to render clean content without editor borders
+    const tempContainer = document.createElement('div');
+    // Copy innerHTML to preserve rendered images (blob URLs) and text
+    tempContainer.innerHTML = sourceElement.innerHTML;
+
+    // Apply only the typography classes, no borders/padding
+    tempContainer.className = 'prose prose-slate dark:prose-invert max-w-none';
+
+    // Ensure transparent background and no spacing
+    tempContainer.style.background = 'transparent';
+    tempContainer.style.padding = '0';
+    tempContainer.style.margin = '0';
+    tempContainer.style.width = `${sourceElement.clientWidth}px`; // Match width to preserve text wrapping
+
+    // Position off-screen but visible to the renderer
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.top = '0';
+    tempContainer.style.left = '0';
+    tempContainer.style.zIndex = '-9999';
+
+    // Append to body to inherit global styles/fonts/dark mode
+    document.body.appendChild(tempContainer);
+
+    let dataUrl = '';
+    let width = 0;
+    let height = 0;
+
     try {
-        // Capture screenshot of content only (stripping container styles)
-        const dataUrl = await toPng(element, {
+        // Capture screenshot of the temporary container
+        dataUrl = await toPng(tempContainer, {
             backgroundColor: 'transparent',
-            // Use onClone to modify the cloned DOM before capture
-            filter: () => true, // Dummy filter to avoid type errors if onClone is missing in types? No, just cast options.
-            onClone: (clonedNode: Node) => {
-                if (clonedNode instanceof HTMLElement) {
-                    // Remove all border and padding related classes
-                    clonedNode.style.border = 'none';
-                    clonedNode.style.padding = '0';
-                    clonedNode.style.margin = '0';
-                    clonedNode.style.boxShadow = 'none';
-                    clonedNode.style.background = 'transparent';
+            style: { margin: '0' }
+        });
 
-                    // Remove specific classes that might cause borders
-                    clonedNode.classList.remove('border', 'border-neutral-200', 'dark:border-neutral-700', 'rounded', 'shadow');
-                }
-            },
-            style: {
-                margin: '0',
-                padding: '0',
-                border: 'none',
-                outline: 'none',
-                boxShadow: 'none',
-                borderRadius: '0',
-                background: 'transparent',
-                // Explicitly reset border properties to override any shorthands or specificities
-                borderWidth: '0',
-                borderColor: 'transparent',
-                borderStyle: 'none'
-            }
-        } as any);
+        width = tempContainer.offsetWidth;
+        height = tempContainer.offsetHeight;
 
-        const width = element.offsetWidth;
-        const height = element.offsetHeight;
+    } catch (e) {
+        console.error("Failed to generate screenshot", e);
+    } finally {
+        // Clean up
+        if (tempContainer.parentNode) {
+            tempContainer.parentNode.removeChild(tempContainer);
+        }
+    }
 
+    if (!dataUrl) return;
+
+    try {
         const timestamp = new Date().getTime();
         const filename = `drawing_${timestamp}.svg`;
 
