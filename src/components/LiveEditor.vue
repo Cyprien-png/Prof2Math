@@ -540,7 +540,15 @@ onUnmounted(() => {
 
 // Add Block Helper
 const addNextBlock = () => {
-    const newBlock = blockService.createBlock('', undefined, false);
+    const newBlock = blockService.createBlock('', undefined, 'text', false);
+    newBlock.isEditing = true;
+    blocks.value.push(newBlock);
+
+    pushHistory();
+}
+
+const addNextHandwrittenBlock = () => {
+    const newBlock = blockService.createBlock('', undefined, 'handwriting', false);
     newBlock.isEditing = true;
     blocks.value.push(newBlock);
 
@@ -1062,9 +1070,15 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
                                 @keydown="handleKeydown($event, index)" @paste="handlePaste($event, index)" />
 
                             <!-- Add New Block Area -->
-                            <div @click="addNextBlock"
-                                class="h-12 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded flex items-center justify-center text-neutral-400 opacity-0 hover:opacity-100 transition-all duration-200">
-                                <span class="text-sm">+ Add a new block</span>
+                            <div class="flex gap-4 opacity-0 hover:opacity-100 transition-all duration-200">
+                                <div @click="addNextBlock"
+                                    class="flex-1 h-12 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded flex items-center justify-center text-neutral-400">
+                                    <span class="text-sm">+ Add new block</span>
+                                </div>
+                                <div @click="addNextHandwrittenBlock"
+                                    class="flex-1 h-12 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded flex items-center justify-center text-neutral-400">
+                                    <span class="text-sm">+ Add new handwritten block</span>
+                                </div>
                             </div>
                         </div>
                     </div>

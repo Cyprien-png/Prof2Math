@@ -4,6 +4,7 @@ export interface Block {
     html: string;
     isEditing: boolean;
     name?: string;
+    type?: 'text' | 'handwriting'; // defaults to 'text'
 }
 
 export interface FileTreeNode {

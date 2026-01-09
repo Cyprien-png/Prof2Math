@@ -41,27 +41,65 @@ md.use(texmath, {
 
 export class BlockService {
     parseBlocks(content: string): Block[] {
-        // Regex to split by delimiters, capturing optional name
-        const regex = /\n*<!--\s*block(?::\s*(.*?))?\s*-->\n*/g;
+        // Updated regex to capture optional name AND optional type
+        // Format: <!-- block: name="Foo" type="handwriting" -->
+        // Or simple: <!-- block: Foo --> (legacy name only)
+        // Or: <!-- blockType="handwriting" --> ? 
+        // Let's stick to the existing "block: (maybe name)" format and extend it carefully.
+        // Actually, the previous regex was `<!--\s*block(?::\s*(.*?))?\s*-->`
+        // If we want to support attributes, we should probably parse the content inside more robustly.
+        // But for backward compat with "block: Name", let's be careful.
+
+        // Let's try to match: <!-- block:? (content) -->
+        const regex = /\n*<!--\s*block(?::\s*|)(.*?)\s*-->\n*/g;
         const rawParts = content.split(regex);
         const newBlocks: Block[] = [];
 
         let startIndex = 0;
 
         if (rawParts.length > 0) {
+            // First chunk before any block comment is virtually a block (usually title/intro)
             const firstChunk = rawParts[0];
             if (firstChunk && firstChunk.trim().length > 0) {
-                newBlocks.push(this.createBlock(firstChunk, undefined, true));
+                // The very first implicit block is always text
+                newBlocks.push(this.createBlock(firstChunk, undefined, 'text', true));
             }
             startIndex = 1;
         }
 
         for (let i = startIndex; i < rawParts.length; i += 2) {
-            const name = rawParts[i];
+            const metadataString = rawParts[i]; // The captured group (metadata)
             if (i + 1 >= rawParts.length) break;
             const markdown = rawParts[i + 1] || '';
 
-            newBlocks.push(this.createBlock(markdown, name ? name.trim() : undefined));
+            // Parse metadata
+            let name: string | undefined = undefined;
+            let type: 'text' | 'handwriting' = 'text';
+
+            if (metadataString) {
+                const trimmed = metadataString.trim();
+                if (trimmed.startsWith('type=')) {
+                    // e.g. type="handwriting" name="foo"
+                    // Simple attribute parser
+                    const typeMatch = trimmed.match(/type=["']?(\w+)["']?/);
+                    if (typeMatch) {
+                        const t = typeMatch[1];
+                        if (t === 'handwriting') type = 'handwriting';
+                    }
+
+                    const nameMatch = trimmed.match(/name=["']?([^"']+)["']?/);
+                    if (nameMatch) {
+                        name = nameMatch[1];
+                    }
+                } else {
+                    // Legacy: It's just the name
+                    if (trimmed.length > 0) {
+                        name = trimmed;
+                    }
+                }
+            }
+
+            newBlocks.push(this.createBlock(markdown, name, type));
         }
 
         return newBlocks;
@@ -69,12 +107,22 @@ export class BlockService {
 
     serializeBlocks(blocks: Block[]): string {
         return blocks.map(b => {
-            const namePart = b.name ? `: ${b.name}` : '';
-            return `<!-- block${namePart} -->\n${b.markdown}`;
+            let metadata = '';
+
+            if (b.type === 'handwriting') {
+                // New serialization format for typed blocks
+                metadata += ` type="handwriting"`;
+                if (b.name) metadata += ` name="${b.name}"`;
+                return `<!-- block:${metadata} -->\n${b.markdown}`;
+            } else {
+                // Legacy / Standard Text format
+                const namePart = b.name ? `: ${b.name}` : '';
+                return `<!-- block${namePart} -->\n${b.markdown}`;
+            }
         }).join('\n\n').trim();
     }
 
-    createBlock(markdown: string, name?: string, isLegacy = false): Block {
+    createBlock(markdown: string, name?: string, type: 'text' | 'handwriting' = 'text', isLegacy = false): Block {
         const id = isLegacy ? `block-legacy-${Date.now()}` : `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
         return {
@@ -82,9 +130,12 @@ export class BlockService {
             markdown,
             html: this.renderHtml(markdown),
             isEditing: false,
-            name
+            name,
+            type
         };
     }
+
+    // ... renderHtml ...
 
     renderHtml(markdown: string): string {
         return DOMPurify.sanitize(md.render(markdown), {
@@ -100,7 +151,8 @@ export class BlockService {
             isEditing: false,
             name: original.name ? `${original.name} (Copy)` : undefined,
             markdown: original.markdown,
-            html: original.html
+            html: original.html,
+            type: original.type // preserve type
         };
     }
 }

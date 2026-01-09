@@ -2,6 +2,7 @@
 import { nextTick, ref, watch, onMounted } from 'vue';
 import type { Block } from '../../types';
 import BlockActionsMenu from './BlockActionsMenu.vue';
+import HandwrittenBlock from '../HandwrittenBlock.vue';
 import { fileService } from '../../services/FileService';
 import { getCaretCoordinates } from '../../utils/caret';
 
@@ -218,7 +219,7 @@ const renderImages = async () => {
                 // Resolve path
                 // Simple resolution: relative to current file's directory
                 const fileDir = props.currentFilePath.substring(0, props.currentFilePath.lastIndexOf('/'));
-                const decodedSrc = decodeURIComponent(src);
+                const decodedSrc = decodeURIComponent(src).split('?')[0] || '';
                 const targetPath = fileDir ? `${fileDir}/${decodedSrc}` : decodedSrc;
 
                 const fileHandle = await fileService.getFileHandleByPath(props.rootHandle, targetPath);
@@ -329,16 +330,23 @@ const onContextMenu = (e: MouseEvent) => {
 
         <!-- Edit Mode -->
         <div v-else class="relative w-full">
-            <!-- Shadow div for height calculation -->
-            <div ref="shadowRef"
-                class="w-full p-4 font-mono text-base border border-transparent overflow-hidden invisible pointer-events-none whitespace-pre-wrap break-words"
-                aria-hidden="true">{{ block.markdown + '\n' }}</div>
+            <template v-if="block.type === 'handwriting'">
+                <HandwrittenBlock :block="block" :root-handle="rootHandle" :current-file-path="currentFilePath"
+                    @save="emit('save', index)" @cancel="emit('save', index)" />
+            </template>
+            <template v-else>
+                <!-- Shadow div for height calculation -->
+                <div ref="shadowRef"
+                    class="w-full p-4 font-mono text-base border border-transparent overflow-hidden invisible pointer-events-none whitespace-pre-wrap break-words"
+                    aria-hidden="true">{{ block.markdown + '\n' }}</div>
 
-            <textarea ref="textareaRef" :id="`textarea-${index}`" v-model="block.markdown" @blur="emit('save', index)"
-                @input="onInput" @keydown="emit('keydown', $event, index)" @paste="emit('paste', $event)" rows="1"
-                class="w-full p-4 bg-transparent font-mono text-base focus:outline-none focus:border-neutral-500 resize-none overflow-hidden block absolute top-0 left-0 h-full"
-                placeholder="Empty block...">
-            </textarea>
+                <textarea ref="textareaRef" :id="`textarea-${index}`" v-model="block.markdown"
+                    @blur="emit('save', index)" @input="onInput" @keydown="emit('keydown', $event, index)"
+                    @paste="emit('paste', $event)" rows="1"
+                    class="w-full p-4 bg-transparent font-mono text-base focus:outline-none focus:border-neutral-500 resize-none overflow-hidden block absolute top-0 left-0 h-full"
+                    placeholder="Empty block...">
+                </textarea>
+            </template>
         </div>
     </div>
 </template>
