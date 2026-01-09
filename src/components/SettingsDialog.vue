@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { PROMPTS } from '../prompts';
 
 const props = defineProps<{
     isOpen: boolean;
@@ -19,6 +24,9 @@ const activeTab = ref<'general' | 'files' | 'ai'>('general');
 // AI Settings
 const aiProvider = ref('openai');
 const aiApiKey = ref('');
+const isTestingAi = ref(false);
+const aiTestResult = ref<string | null>(null);
+const aiTestError = ref<string | null>(null);
 
 const handleSelectDirectory = async () => {
     try {
@@ -78,6 +86,46 @@ const saveAiSettings = () => {
     localStorage.setItem('mathdown_ai_provider', aiProvider.value);
     localStorage.setItem('mathdown_ai_api_key', aiApiKey.value);
 };
+
+const testAiConnection = async () => {
+    if (!aiApiKey.value) {
+        aiTestError.value = "Please enter an API key first.";
+        return;
+    }
+
+    isTestingAi.value = true;
+    aiTestResult.value = null;
+    aiTestError.value = null;
+
+    try {
+        let model;
+
+        if (aiProvider.value === 'openai') {
+            const openai = createOpenAI({ apiKey: aiApiKey.value, dangerouslyAllowBrowser: true } as any);
+            model = openai('gpt-4o');
+        } else if (aiProvider.value === 'google') {
+            const google = createGoogleGenerativeAI({ apiKey: aiApiKey.value });
+            model = google('gemini-3-flash-preview');
+        } else if (aiProvider.value === 'anthropic') {
+            const anthropic = createAnthropic({ apiKey: aiApiKey.value });
+            model = anthropic('claude-3-5-sonnet-20240620');
+        }
+
+        if (!model) throw new Error("Invalid provider selected");
+
+        const { text } = await generateText({
+            model,
+            prompt: PROMPTS.TEST_JOKE,
+        });
+
+        aiTestResult.value = text;
+    } catch (e: any) {
+        console.error("AI Test Failed", e);
+        aiTestError.value = e.message || "Failed to connect to AI provider.";
+    } finally {
+        isTestingAi.value = false;
+    }
+};
 </script>
 
 <template>
@@ -116,8 +164,8 @@ const saveAiSettings = () => {
                 <!-- Header -->
                 <div class="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-700">
                     <h3 class="text-lg font-medium text-neutral-800 dark:text-neutral-100">
-                        {{ activeTab === 'general' ? 'General Settings' : activeTab === 'files' ? 'Local Files' : 'AI
-                        Integration' }}
+                        {{ activeTab === 'general' ? 'General Settings' :
+                            activeTab === 'files' ? 'Local Files' : 'AI Integration' }}
                     </h3>
                     <button @click="emit('close')"
                         class="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">
@@ -198,6 +246,23 @@ const saveAiSettings = () => {
                             <p class="text-xs text-neutral-500 dark:text-neutral-400">
                                 Your API key is stored locally in your browser and never sent to our servers.
                             </p>
+                        </div>
+
+                        <div class="pt-2">
+                            <button @click="testAiConnection" :disabled="isTestingAi || !aiApiKey"
+                                class="w-full px-4 py-2 bg-neutral-900 dark:bg-neutral-100/10 text-white dark:text-neutral-100 rounded-md shadow hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {{ isTestingAi ? 'Testing Connection...' : 'Test Connection (Tell a joke)' }}
+                            </button>
+                        </div>
+
+                        <!-- Test Result -->
+                        <div v-if="aiTestResult"
+                            class="p-3 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded border border-green-200 dark:border-green-800 text-sm">
+                            <strong>AI Says:</strong> {{ aiTestResult }}
+                        </div>
+                        <div v-if="aiTestError"
+                            class="p-3 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-800 text-sm">
+                            <strong>Error:</strong> {{ aiTestError }}
                         </div>
                     </div>
 
