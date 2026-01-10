@@ -662,7 +662,7 @@ defineExpose({
                 <div class="w-px bg-neutral-200"></div>
                 <button @click="currentTool = 'eraser'" :class="{ 'bg-neutral-200': currentTool === 'eraser' }"
                     class="p-1.5 hover:bg-neutral-100 text-neutral-700" title="Vector Eraser">
-                    <EraserIcon class="size-4" />
+                    <EraserIcon class="size-7" />
                 </button>
             </div>
 
