@@ -187,9 +187,16 @@ const initCanvas = () => {
     if (ctx.value) {
         ctx.value.lineCap = 'round';
         ctx.value.lineJoin = 'round';
-        ctx.value.strokeStyle = 'black';
+
+        // Get dynamic color from current text color
+        const style = getComputedStyle(document.body);
+        // We can just use the computed style of the container or body
+        const color = getComputedStyle(containerRef.value).color;
+        ctx.value.strokeStyle = color || 'black';
     }
 
+    // Force redraw to apply color? No, drawStroke takes context current state.
+    // But drawAll needs to set strokeStyle. See drawAll below.
     drawAll();
 };
 
@@ -434,6 +441,12 @@ const drawAll = () => {
 
     ctx.value.lineWidth = LINE_WIDTH * scale.value;
 
+    // Update stroke style from computed style every time we redraw all
+    if (containerRef.value) {
+        const color = getComputedStyle(containerRef.value).color;
+        ctx.value.strokeStyle = color;
+    }
+
     for (const stroke of strokes.value) {
         drawStroke(ctx.value, stroke);
     }
@@ -524,11 +537,11 @@ const generateSvg = () => {
     const imgY = 0 - minY;
 
     const svg = `
-<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" stroke="black" fill="none" class="handwritten-block-svg">
-    ${backgroundImage.value ? `<image href="${backgroundImage.value}" x="${imgX}" y="${imgY}" width="${bgImageWidth.value}" height="${bgImageHeight.value}" />` : ''}
-    <desc>${encodedStrokes}</desc>
-    <path d="${pathData}" stroke-width="${LINE_WIDTH}" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
+        < svg width = "${width}" height = "${height}" viewBox = "0 0 ${width} ${height}" xmlns = "http://www.w3.org/2000/svg" stroke = "currentColor" fill = "none" class="handwritten-block-svg" >
+            ${backgroundImage.value ? `<image href="${backgroundImage.value}" x="${imgX}" y="${imgY}" width="${bgImageWidth.value}" height="${bgImageHeight.value}" />` : ''}
+    <desc>${encodedStrokes} </desc>
+        < path d = "${pathData}" stroke - width="${LINE_WIDTH}" stroke - linecap="round" stroke - linejoin="round" />
+            </svg>`;
 
     return svg.trim();
 };
@@ -650,7 +663,7 @@ defineExpose({
 
     <!-- Edit Mode -->
     <div v-else
-        class="flex flex-col w-full h-[500px] border border-neutral-300 rounded bg-white relative overflow-hidden"
+        class="flex flex-col w-full h-[500px] border border-neutral-300 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 dark:text-white relative overflow-hidden"
         ref="containerRef">
         <!-- Toolbar -->
         <div class="absolute top-2 left-2 z-10 flex gap-2">
