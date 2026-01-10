@@ -726,7 +726,40 @@ const convertBlockToTextual = async (index: number) => {
         // For now just console log
         console.log("Capturing block for OCR...");
 
-        const dataUrl = await toPng(element, { backgroundColor: null });
+        const dataUrl = await (async () => {
+            // Clone the element to manipulate without affecting DOM
+            const clone = element.cloneNode(true) as HTMLElement;
+
+            // Check for dark mode
+            const isDark = document.documentElement.classList.contains('dark');
+
+            if (isDark) {
+                // Explicitly apply invert filter to elements that rely on `dark:invert`
+                // html-to-image might miss the tailwind class context, so we bake it in style
+                const invertedElements = clone.querySelectorAll('.dark\\:invert');
+                invertedElements.forEach(el => {
+                    // @ts-ignore
+                    el.style.filter = 'invert(1)';
+                });
+            }
+
+            // Position off-screen
+            clone.style.position = 'absolute';
+            clone.style.top = '-9999px';
+            clone.style.left = '-9999px';
+            clone.style.width = `${element.clientWidth}px`;
+
+            document.body.appendChild(clone);
+
+            try {
+                return await toPng(clone, {
+                    backgroundColor: null, // Transparent background
+                    style: { visibility: 'visible' }
+                });
+            } finally {
+                document.body.removeChild(clone);
+            }
+        })();
 
         // 3. Get AI Model
         const model = aiService.getModel();
