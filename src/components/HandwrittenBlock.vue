@@ -552,7 +552,7 @@ const generateSvg = () => {
 
     const svg = `
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" fill="none" class="handwritten-block-svg">
-    ${backgroundImage.value ? `<image href="${backgroundImage.value}" x="${imgX}" y="${imgY}" width="${bgImageWidth.value}" height="${bgImageHeight.value}" />` : ''}
+    ${backgroundImage.value ? `<image href="${backgroundImage.value}" x="${imgX}" y="${imgY}" width="${bgImageWidth.value}" height="${bgImageHeight.value}" class="dark:invert" />` : ''}
     <desc>${encodedStrokes}</desc>
     <path d="${pathData}" stroke-width="${LINE_WIDTH}" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;

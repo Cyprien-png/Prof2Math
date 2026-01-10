@@ -586,7 +586,9 @@ const convertBlockToHandwriting = async (index: number) => {
     tempContainer.innerHTML = sourceElement.innerHTML;
 
     // Apply only the typography classes, no borders/padding
-    tempContainer.className = 'prose prose-slate dark:prose-invert max-w-none';
+    // FORCE Light Mode text color (black) so it can be inverted in Dark Mode
+    tempContainer.className = 'prose prose-slate max-w-none text-black';
+    tempContainer.style.color = 'black';
 
     // Ensure transparent background and no spacing
     tempContainer.style.background = 'transparent';
@@ -642,7 +644,7 @@ const convertBlockToHandwriting = async (index: number) => {
         // We use a simple structure that HandwrittenBlock will parse
         const svgContent = `
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" stroke="black" fill="none" class="handwritten-block-svg">
-    <image href="${dataUrl}" x="0" y="0" width="${width}" height="${height}" />
+<image href="${dataUrl}" x="0" y="0" width="${width}" height="${height}" class="dark:invert" />
     <desc>[]</desc>
     <path d="" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
