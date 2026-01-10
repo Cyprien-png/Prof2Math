@@ -112,9 +112,10 @@ defineExpose({
 
         <!-- Action Menu Button (Top Right) -->
         <div class="absolute top-1 right-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-            <BlockActionsMenu :is-open="activeMenuBlockId === block.id" :position="menuPosition" @toggle="onMenuToggle"
-                @mouseenter="onMenuMouseEnter" @mouseleave="onMenuMouseLeave" @duplicate="emit('duplicate', index)"
-                @rename="emit('rename', index)" @delete="emit('remove', index)" @convert="emit('convert', index)"
+            <BlockActionsMenu :is-open="activeMenuBlockId === block.id" :position="menuPosition"
+                :block-type="block.type || 'text'" @toggle="onMenuToggle" @mouseenter="onMenuMouseEnter"
+                @mouseleave="onMenuMouseLeave" @duplicate="emit('duplicate', index)" @rename="emit('rename', index)"
+                @delete="emit('remove', index)" @convert="emit('convert', index)"
                 @convert-to-textual="emit('convertToTextual', index)" />
         </div>
 
