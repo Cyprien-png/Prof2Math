@@ -50,7 +50,7 @@ const removeTag = (index: number) => {
 };
 
 const saveTags = () => {
-    localStorage.setItem('mathdown_tags', JSON.stringify(tags.value));
+    localStorage.setItem('prof2math_tags', JSON.stringify(tags.value));
 };
 
 // AI Settings
@@ -89,13 +89,13 @@ const toggleDark = () => {
 
 const toggleAutosave = () => {
     autosaveEnabled.value = !autosaveEnabled.value;
-    localStorage.setItem('mathdown_autosave', String(autosaveEnabled.value));
+    localStorage.setItem('prof2math_autosave', String(autosaveEnabled.value));
 };
 
 const language = ref('English');
 
 const saveLanguage = () => {
-    localStorage.setItem('mathdown_language', language.value);
+    localStorage.setItem('prof2math_language', language.value);
 };
 
 onMounted(() => {
@@ -108,23 +108,23 @@ onMounted(() => {
         document.documentElement.classList.remove('dark');
     }
 
-    if (localStorage.getItem('mathdown_autosave') === 'true') {
+    if (localStorage.getItem('prof2math_autosave') === 'true') {
         autosaveEnabled.value = true;
     }
 
-    if (localStorage.getItem('mathdown_language')) {
-        language.value = localStorage.getItem('mathdown_language') || 'English';
+    if (localStorage.getItem('prof2math_language')) {
+        language.value = localStorage.getItem('prof2math_language') || 'English';
     }
 
-    if (localStorage.getItem('mathdown_ai_provider')) {
-        aiProvider.value = localStorage.getItem('mathdown_ai_provider') || 'openai';
+    if (localStorage.getItem('prof2math_ai_provider')) {
+        aiProvider.value = localStorage.getItem('prof2math_ai_provider') || 'openai';
     }
-    if (localStorage.getItem('mathdown_ai_api_key')) {
-        aiApiKey.value = localStorage.getItem('mathdown_ai_api_key') || '';
+    if (localStorage.getItem('prof2math_ai_api_key')) {
+        aiApiKey.value = localStorage.getItem('prof2math_ai_api_key') || '';
     }
 
     // Load tags
-    const savedTags = localStorage.getItem('mathdown_tags');
+    const savedTags = localStorage.getItem('prof2math_tags');
     if (savedTags) {
         try {
             tags.value = JSON.parse(savedTags);
@@ -135,8 +135,8 @@ onMounted(() => {
 });
 
 const saveAiSettings = () => {
-    localStorage.setItem('mathdown_ai_provider', aiProvider.value);
-    localStorage.setItem('mathdown_ai_api_key', aiApiKey.value);
+    localStorage.setItem('prof2math_ai_provider', aiProvider.value);
+    localStorage.setItem('prof2math_ai_api_key', aiApiKey.value);
 };
 
 const testAiConnection = async () => {
@@ -282,7 +282,7 @@ const testAiConnection = async () => {
                                         <div class="w-4 h-4 rounded-full shadow-sm"
                                             :style="{ backgroundColor: tag.color }"></div>
                                         <span class="text-sm text-neutral-700 dark:text-neutral-300">{{ tag.name
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                     <button v-if="!tag.isDefault" @click="removeTag(index)"
                                         class="p-1 text-neutral-400 hover:text-red-500 transition-colors">

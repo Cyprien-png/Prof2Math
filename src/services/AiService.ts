@@ -6,8 +6,8 @@ import { PROMPTS } from '../prompts';
 
 class AiService {
     getModel(): LanguageModel {
-        const provider = localStorage.getItem('mathdown_ai_provider') || 'openai';
-        const apiKey = localStorage.getItem('mathdown_ai_api_key');
+        const provider = localStorage.getItem('prof2math_ai_provider') || 'openai';
+        const apiKey = localStorage.getItem('prof2math_ai_api_key');
 
         if (!apiKey) {
             throw new Error("AI API Key is missing. Please configure it in settings.");
@@ -42,7 +42,7 @@ class AiService {
         }
 
         const model = this.getModel();
-        const language = localStorage.getItem('mathdown_language') || 'English';
+        const language = localStorage.getItem('prof2math_language') || 'English';
 
 
         prompt = prompt.replace('@subject', subject)

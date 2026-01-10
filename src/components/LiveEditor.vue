@@ -153,7 +153,7 @@ watch(blocks, () => {
 // --- Actions ---
 
 // Expanded paths persistence
-const EXPANDED_PATHS_KEY = 'mathdown_expanded_paths';
+const EXPANDED_PATHS_KEY = 'prof2math_expanded_paths';
 const expandedPaths = ref<Set<string>>(new Set());
 
 // Load expanded paths
@@ -893,7 +893,7 @@ onMounted(async () => {
     window.addEventListener('keydown', handleGlobalKeydown);
 
     // Load Autosave Setting
-    if (localStorage.getItem('mathdown_autosave') === 'true') {
+    if (localStorage.getItem('prof2math_autosave') === 'true') {
         autosaveEnabled.value = true;
     }
 
@@ -916,7 +916,7 @@ onMounted(async () => {
 watch(showSettings, (isOpen) => {
     if (!isOpen) {
         // Refresh settings when dialog closes
-        if (localStorage.getItem('mathdown_autosave') === 'true') {
+        if (localStorage.getItem('prof2math_autosave') === 'true') {
             autosaveEnabled.value = true;
         } else {
             autosaveEnabled.value = false;

@@ -9,7 +9,7 @@ export interface FileServiceOptions {
 
 const DEFAULT_OPTIONS: FileServiceOptions = {
     types: [{
-        description: 'MathDown File',
+        description: 'Prof2Math File',
         accept: { 'text/markdown': ['.mthd'] },
     }],
 };

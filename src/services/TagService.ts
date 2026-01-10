@@ -1,6 +1,6 @@
 import type { Tag } from '../types';
 
-const STORAGE_KEY = 'mathdown_tags';
+const STORAGE_KEY = 'prof2math_tags';
 
 export const DEFAULT_TAGS: Tag[] = [
     { name: 'Explanations', color: '#60a5fa', isDefault: true },

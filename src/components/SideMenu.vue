@@ -11,7 +11,7 @@ import NoWorkspaceFound from './messages/sidemenu/NoWorkspaceFound.vue';
 import NoLocalStorage from './messages/sidemenu/NoLocalStorage.vue';
 import NoFile from './messages/sidemenu/NoFile.vue';
 
-const STORAGE_KEY_COLLAPSED = 'mathdown_sidemenu_collapsed';
+const STORAGE_KEY_COLLAPSED = 'prof2math_sidemenu_collapsed';
 const storedCollapsed = localStorage.getItem(STORAGE_KEY_COLLAPSED);
 const isCollapsed = ref(storedCollapsed !== null ? storedCollapsed === 'true' : true);
 
@@ -165,7 +165,7 @@ const closeRootMenu = () => {
             :class="isCollapsed ? 'justify-center' : 'justify-between'">
 
             <span v-if="!isCollapsed" class="font-bold text-xl text-blue-600 dark:text-blue-400 truncate">
-                MathDown
+                Prof2Math
             </span>
 
             <button @click="isCollapsed = !isCollapsed"
