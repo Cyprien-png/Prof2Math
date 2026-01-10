@@ -681,25 +681,30 @@ defineExpose({
         ref="containerRef">
         <!-- Toolbar -->
         <div class="absolute top-2 left-2 z-10 flex gap-2">
-            <div class="flex bg-white shadow rounded overflow-hidden mr-2">
-                <button @click="currentTool = 'pencil'" :class="{ 'bg-neutral-200': currentTool === 'pencil' }"
-                    class="p-1.5 hover:bg-neutral-100 text-neutral-700" title="Pencil">
+            <div class="flex bg-white dark:bg-neutral-800 shadow rounded overflow-hidden mr-2">
+                <button @click="currentTool = 'pencil'"
+                    :class="{ 'bg-neutral-200 dark:bg-neutral-600': currentTool === 'pencil' }"
+                    class="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300"
+                    title="Pencil">
                     <PencilIcon class="size-4" />
                 </button>
-                <div class="w-px bg-neutral-200"></div>
-                <button @click="currentTool = 'eraser'" :class="{ 'bg-neutral-200': currentTool === 'eraser' }"
-                    class="p-1.5 hover:bg-neutral-100 text-neutral-700" title="Vector Eraser">
+                <div class="w-px bg-neutral-200 dark:bg-neutral-700"></div>
+                <button @click="currentTool = 'eraser'"
+                    :class="{ 'bg-neutral-200 dark:bg-neutral-600': currentTool === 'eraser' }"
+                    class="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300"
+                    title="Vector Eraser">
                     <EraserIcon class="size-7" />
                 </button>
             </div>
 
             <button @click="emit('cancel')"
-                class="px-3 py-1 bg-white shadow rounded text-sm hover:bg-neutral-50">Cancel</button>
+                class="px-3 py-1 bg-white dark:bg-neutral-800 shadow rounded text-sm hover:bg-neutral-50 dark:hover:bg-neutral-700 dark:text-neutral-200">Cancel</button>
             <button @click="save"
-                class="px-3 py-1 bg-neutral-900 text-white shadow rounded text-sm hover:bg-neutral-700">Done</button>
+                class="px-3 py-1 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 shadow rounded text-sm hover:bg-neutral-700 dark:hover:bg-neutral-300">Done</button>
         </div>
 
-        <div class="absolute top-2 right-2 z-10 flex gap-2 bg-white/80 p-1 rounded shadow text-xs text-neutral-500">
+        <div
+            class="absolute top-2 right-2 z-10 flex gap-2 bg-white/80 dark:bg-neutral-800/80 p-1 rounded shadow text-xs text-neutral-500 dark:text-neutral-400">
             <span>Space+Drag to Pan</span>
             <span>Ctrl+Scroll to Zoom</span>
         </div>
