@@ -390,7 +390,7 @@ const displayName = computed(() => {
                                 New empty file
                             </button>
                             <button @click="onAction('new-file-template')"
-                                class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400">
+                                class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
                                 New file from template
                             </button>
                         </div>

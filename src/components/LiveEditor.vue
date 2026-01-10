@@ -715,6 +715,7 @@ const convertBlockToHandwriting = async (index: number) => {
 
 // --- AI Logic ---
 const isProcessingAi = ref(false);
+const processingMessage = ref('Transcribing handwriting...');
 
 const convertBlockToTextual = async (index: number) => {
     const block = blocks.value[index];
@@ -1353,6 +1354,27 @@ const handleConfirmTemplateCreate = async (data: { filename: string; template: s
         finalName += '.mthd';
     }
 
+    let fileContent = DEFAULT_FILE_CONTENT;
+
+    // AI Generation Logic
+    if (data.template === 'Exercises' || data.template === 'Theory' || data.template === 'Theory + exercises') {
+        isProcessingAi.value = true;
+        processingMessage.value = 'Generating content from template...';
+        try {
+            const aiContent = await aiService.generateFileContent(data.template, data.subject, data.description);
+            // Default content parsing might need adjustment if AI output is pure text or custom format
+            // But BlockService parses markdown.
+            fileContent = aiContent;
+        } catch (e: any) {
+            console.error('AI Generation failed:', e);
+            alert(`Failed to generate template content: ${e.message}. Creating empty file instead.`);
+            // fallback to default
+        } finally {
+            isProcessingAi.value = false;
+            processingMessage.value = 'Transcribing handwriting...'; // Reset default
+        }
+    }
+
     let newHandle: FileSystemFileHandle | null = null;
 
     try {
@@ -1361,7 +1383,7 @@ const handleConfirmTemplateCreate = async (data: { filename: string; template: s
         newHandle = newFileHandle;
         // @ts-ignore
         const writable = await newFileHandle.createWritable();
-        await writable.write(DEFAULT_FILE_CONTENT);
+        await writable.write(fileContent);
         await writable.close();
 
         await loadDirectory();
@@ -1417,7 +1439,7 @@ const handleConfirmTemplateCreate = async (data: { filename: string; template: s
                         </div>
                     </div>
                     <div class="text-neutral-600 dark:text-neutral-300 font-medium animate-pulse">
-                        Transcribing handwriting...
+                        {{ processingMessage }}
                     </div>
                 </div>
             </div>
