@@ -82,7 +82,22 @@ const handleMenuToggle = (e: Event) => {
 const onAction = async (action: 'rename' | 'duplicate' | 'delete' | 'edit' | 'new-file' | 'new-folder' | 'new-file-template') => {
     activeMenuPath.value = null;
 
-    // ... existing handlers ...
+    if (action === 'delete') {
+        emit('delete', props.node);
+        return;
+    }
+    if (action === 'rename') {
+        emit('rename', props.node);
+        return;
+    }
+    if (action === 'duplicate') {
+        emit('duplicate', props.node);
+        return;
+    }
+    if (action === 'new-file') {
+        emit('create-file', props.node);
+        return;
+    }
 
     if (action === 'new-folder') {
         emit('create-folder', props.node);
