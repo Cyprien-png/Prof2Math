@@ -753,15 +753,12 @@ const convertBlockToTextual = async (index: number) => {
         isProcessingAi.value = true;
         // Indicate loading state (optional, maybe global spinner or toast?)
         // For now just console log
-        console.log("Capturing block for OCR...");
 
         // @ts-ignore
         const dataUrl = await toPng(element, { backgroundColor: null });
 
         // 3. Get AI Model
         const model = aiService.getModel();
-
-        console.log("Sending to AI...");
 
         // 4. Call AI with Image
         const { text } = await generateText({
@@ -776,8 +773,6 @@ const convertBlockToTextual = async (index: number) => {
                 }
             ]
         });
-
-        console.log("AI Response:", text);
 
         if (text) {
             // Confirm with user

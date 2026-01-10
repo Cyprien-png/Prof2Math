@@ -49,8 +49,6 @@ class AiService {
             .replace('@description', description)
             .replace('@Language', language);
 
-        console.log('Template Prompt:', prompt);
-
         const { text } = await generateText({
             model,
             prompt
