@@ -9,6 +9,12 @@ export interface Block {
     isRevealed?: boolean;
 }
 
+export interface Tag {
+    name: string;
+    color: string;
+    isDefault?: boolean;
+}
+
 export interface FileTreeNode {
     name: string;
     kind: 'file' | 'directory';

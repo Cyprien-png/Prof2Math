@@ -3,6 +3,8 @@ import { ref, onMounted } from 'vue';
 import { generateText } from 'ai';
 import { PROMPTS } from '../prompts';
 import { aiService } from '../services/AiService';
+import type { Tag } from '../types';
+import TrashIcon from './icons/TrashIcon.vue';
 
 const props = defineProps<{
     isOpen: boolean;
@@ -16,8 +18,40 @@ const emit = defineEmits<{
 
 const isDark = ref(false);
 const autosaveEnabled = ref(false);
-const activeTab = ref<'general' | 'files' | 'ai'>('general');
+const activeTab = ref<'general' | 'files' | 'ai' | 'theme'>('general');
 // const currentDirectoryName = ref<string | null>(null); // Use prop instead
+
+// Theme & Tags
+const tags = ref<Tag[]>([
+    { name: 'Explanations', color: '#60a5fa', isDefault: true },
+    { name: 'Exercises', color: '#4ade80', isDefault: true },
+    { name: 'Answers', color: '#f87171', isDefault: true }
+]);
+const newTagName = ref('');
+const newTagColor = ref('#000000');
+
+const addTag = () => {
+    if (!newTagName.value) return;
+    tags.value.push({
+        name: newTagName.value,
+        color: newTagColor.value,
+        isDefault: false
+    });
+    newTagName.value = '';
+    newTagColor.value = '#000000';
+    saveTags();
+};
+
+const removeTag = (index: number) => {
+    const tag = tags.value[index];
+    if (!tag || tag.isDefault) return;
+    tags.value.splice(index, 1);
+    saveTags();
+};
+
+const saveTags = () => {
+    localStorage.setItem('mathdown_tags', JSON.stringify(tags.value));
+};
 
 // AI Settings
 const aiProvider = ref('openai');
@@ -77,6 +111,16 @@ onMounted(() => {
     }
     if (localStorage.getItem('mathdown_ai_api_key')) {
         aiApiKey.value = localStorage.getItem('mathdown_ai_api_key') || '';
+    }
+
+    // Load tags
+    const savedTags = localStorage.getItem('mathdown_tags');
+    if (savedTags) {
+        try {
+            tags.value = JSON.parse(savedTags);
+        } catch (e) {
+            console.error('Failed to parse tags', e);
+        }
     }
 });
 
@@ -143,6 +187,11 @@ const testAiConnection = async () => {
                         :class="activeTab === 'ai' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800'">
                         AI Integration
                     </button>
+                    <button @click="activeTab = 'theme'"
+                        class="w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                        :class="activeTab === 'theme' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800'">
+                        Theme & Tags
+                    </button>
                 </nav>
             </div>
 
@@ -169,16 +218,6 @@ const testAiConnection = async () => {
                     <!-- General Tab -->
                     <div v-if="activeTab === 'general'" class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <span class="text-neutral-700 dark:text-neutral-300 font-medium">Dark Mode</span>
-                            <button @click="toggleDark"
-                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                :class="isDark ? 'bg-blue-600' : 'bg-neutral-200 dark:bg-neutral-400'">
-                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                                    :class="isDark ? 'translate-x-6' : 'translate-x-1'" />
-                            </button>
-                        </div>
-
-                        <div class="flex items-center justify-between">
                             <div class="flex flex-col">
                                 <span class="text-neutral-700 dark:text-neutral-300 font-medium">Autosave</span>
                             </div>
@@ -188,6 +227,59 @@ const testAiConnection = async () => {
                                 <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
                                     :class="autosaveEnabled ? 'translate-x-6' : 'translate-x-1'" />
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Theme Tab -->
+                    <div v-if="activeTab === 'theme'" class="space-y-6">
+                        <!-- Dark Mode Section -->
+                        <div class="flex items-center justify-between">
+                            <span class="text-neutral-700 dark:text-neutral-300 font-medium">Dark Mode</span>
+                            <button @click="toggleDark"
+                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                :class="isDark ? 'bg-blue-600' : 'bg-neutral-200 dark:bg-neutral-400'">
+                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                                    :class="isDark ? 'translate-x-6' : 'translate-x-1'" />
+                            </button>
+                        </div>
+
+                        <div class="h-px bg-neutral-200 dark:bg-neutral-700"></div>
+
+                        <!-- Tags Section -->
+                        <div class="space-y-4">
+                            <h3
+                                class="text-sm font-medium text-neutral-900 dark:text-neutral-100 uppercase tracking-wide">
+                                Tags
+                            </h3>
+
+                            <div class="space-y-2">
+                                <div v-for="(tag, index) in tags" :key="index"
+                                    class="flex items-center justify-between p-2 rounded bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-700/50">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-4 h-4 rounded-full shadow-sm"
+                                            :style="{ backgroundColor: tag.color }"></div>
+                                        <span class="text-sm text-neutral-700 dark:text-neutral-300">{{ tag.name
+                                        }}</span>
+                                    </div>
+                                    <button v-if="!tag.isDefault" @click="removeTag(index)"
+                                        class="p-1 text-neutral-400 hover:text-red-500 transition-colors">
+                                        <TrashIcon class="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Add Tag Form -->
+                            <div class="flex items-center gap-2 pt-2">
+                                <input type="color" v-model="newTagColor"
+                                    class="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0" />
+                                <input type="text" v-model="newTagName" placeholder="New tag name"
+                                    @keydown.enter="addTag"
+                                    class="flex-1 px-3 py-1.5 text-sm bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-neutral-900 dark:text-neutral-100" />
+                                <button @click="addTag" :disabled="!newTagName"
+                                    class="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Add
+                                </button>
+                            </div>
                         </div>
                     </div>
 
