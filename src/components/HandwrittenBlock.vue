@@ -188,8 +188,8 @@ const initCanvas = () => {
         ctx.value.lineCap = 'round';
         ctx.value.lineJoin = 'round';
 
+
         // Get dynamic color from current text color
-        const style = getComputedStyle(document.body);
         // We can just use the computed style of the container or body
         const color = getComputedStyle(containerRef.value).color;
         ctx.value.strokeStyle = color || 'black';
@@ -537,11 +537,11 @@ const generateSvg = () => {
     const imgY = 0 - minY;
 
     const svg = `
-        < svg width = "${width}" height = "${height}" viewBox = "0 0 ${width} ${height}" xmlns = "http://www.w3.org/2000/svg" stroke = "currentColor" fill = "none" class="handwritten-block-svg" >
-            ${backgroundImage.value ? `<image href="${backgroundImage.value}" x="${imgX}" y="${imgY}" width="${bgImageWidth.value}" height="${bgImageHeight.value}" />` : ''}
-    <desc>${encodedStrokes} </desc>
-        < path d = "${pathData}" stroke - width="${LINE_WIDTH}" stroke - linecap="round" stroke - linejoin="round" />
-            </svg>`;
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" fill="none" class="handwritten-block-svg">
+    ${backgroundImage.value ? `<image href="${backgroundImage.value}" x="${imgX}" y="${imgY}" width="${bgImageWidth.value}" height="${bgImageHeight.value}" />` : ''}
+    <desc>${encodedStrokes}</desc>
+    <path d="${pathData}" stroke-width="${LINE_WIDTH}" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
 
     return svg.trim();
 };
