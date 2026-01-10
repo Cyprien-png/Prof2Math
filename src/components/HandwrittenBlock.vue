@@ -48,7 +48,11 @@ const ERASER_RADIUS = 10;
 
 // Initialize
 const handleKeydown = (e: KeyboardEvent) => {
-    if (e.code === 'Space') isSpacePressed.value = true;
+    if (e.code === 'Space') {
+        isSpacePressed.value = true;
+        // Prevent default scrolling
+        e.preventDefault();
+    }
 
     // Undo/Redo
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
