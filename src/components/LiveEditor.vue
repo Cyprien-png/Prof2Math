@@ -51,6 +51,11 @@ const showRenameDialog = ref(false);
 const renameInitialName = ref('');
 const renameItemNode = ref<FileTreeNode | null>(null);
 
+// AI Diff Dialog State
+import AiDiffDialog from './AiDiffDialog.vue';
+const showAiDiffDialog = ref(false);
+const pendingAiConversion = ref<{ index: number; image: string; text: string } | null>(null);
+
 // File State
 const fileName = ref('untitled');
 const isDirty = ref(false);
@@ -745,19 +750,13 @@ const convertBlockToTextual = async (index: number) => {
         console.log("AI Response:", text);
 
         if (text) {
-            // 5. Replace Block
-            blockService.updateBlock(block, {
-                type: 'text',
-                markdown: text.trim()
-            });
-            // Update blocks list reference to trigger reactivity if needed
-            // blockService.updateBlock mutates the array in place, so vue should pick it up.
-
-            pushHistory();
-            checkDirty();
-
-            // Always auto-save after conversion
-            handleSaveFile();
+            // Confirm with user
+            pendingAiConversion.value = {
+                index,
+                image: dataUrl,
+                text: text.trim()
+            };
+            showAiDiffDialog.value = true;
         }
 
     } catch (e: any) {
@@ -766,6 +765,30 @@ const convertBlockToTextual = async (index: number) => {
     } finally {
         isProcessingAi.value = false;
     }
+};
+
+const handleConfirmAiConversion = (newText: string) => {
+    if (!pendingAiConversion.value) return;
+
+    const { index } = pendingAiConversion.value;
+    const block = blocks.value[index];
+
+    if (block) {
+        // Replace Block
+        blockService.updateBlock(block, {
+            type: 'text',
+            markdown: newText.trim()
+        });
+
+        pushHistory();
+        checkDirty();
+
+        // Always auto-save after conversion
+        handleSaveFile();
+    }
+
+    showAiDiffDialog.value = false;
+    pendingAiConversion.value = null;
 };
 
 // --- File System Logic ---
@@ -1334,6 +1357,10 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
         <RenameDialog v-if="showRenameDialog" :is-open="showRenameDialog" :initial-name="renameInitialName"
             :title="`Rename ${renameItemNode?.kind || 'item'}`" @close="showRenameDialog = false"
             @confirm="handleConfirmRename" />
+
+        <AiDiffDialog :is-open="showAiDiffDialog" :original-image="pendingAiConversion?.image || ''"
+            :ai-text="pendingAiConversion?.text || ''" @close="showAiDiffDialog = false"
+            @cancel="showAiDiffDialog = false" @confirm="handleConfirmAiConversion" />
     </div>
 
     <CommandMenu :items="commandSuggestions" :selected-index="commandMenuIndex" :position="commandMenuPosition"
