@@ -74,17 +74,17 @@ const handleConfirm = () => {
                     <h4 class="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">Original
                         Handwriting</h4>
                     <div class="flex-1 flex items-center justify-center min-h-[200px]">
-                        <!-- Image container with mid-tone background for mixed contrast visibility -->
+                        <!-- Image container with checkered background for transparency -->
                         <div
-                            class="relative rounded border border-neutral-300 dark:border-neutral-600 p-2 bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                            <!-- Background Layer (Checkerboard) - Optional, simpler to use solid grey/neutral for contrast -->
+                            class="relative rounded border border-neutral-300 dark:border-neutral-600 p-2 bg-white dark:bg-neutral-900 overflow-hidden">
+                            <!-- Background Layer (Checkerboard) -->
+                            <!-- In Dark Mode: We invert this layer to turn Light Grid -> Dark Grid -->
                             <div
-                                class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMCAwSDRWMHoiIGZpbGw9IiNlZWVlZWUiLz48cGF0aCBkPSZNNDAgNDhWNHoiIGZpbGw9IiNlZWVlZWUiLz48L3N2Zz4=')] opacity-20">
+                                class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMCAwSDRWMHoiIGZpbGw9IiNlZWVlZWUiLz48cGF0aCBkPSZNNDAgNDhWNHoiIGZpbGw9IiNlZWVlZWUiLz48L3N2Zz4=')] dark:invert opacity-100">
                             </div>
 
                             <!-- Image Layer -->
-                            <!-- No inversion. Standard display. -->
-                            <!-- Mid-tone background ensures White strokes AND Black text are both visible -->
+                            <!-- We do NOT invert this. If captured in Dark Mode, ink is White. White on Dark Grid = Visible. -->
                             <img :src="originalImage" class="relative z-10 max-w-full h-auto object-contain"
                                 alt="Original Handwriting" />
                         </div>
