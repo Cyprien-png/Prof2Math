@@ -726,25 +726,91 @@ const convertBlockToTextual = async (index: number) => {
         // For now just console log
         console.log("Capturing block for OCR...");
 
-        const dataUrl = await toPng(element, {
-            backgroundColor: undefined,
-            onClone: (clonedNode: Node) => {
+        const dataUrl = await (async () => {
+            // 1. Clone element deep
+            const clone = element.cloneNode(true) as HTMLElement;
+            // Position offscreen to avoid flicker but ensure rendering
+            // Note: toPng needs it in document
+            clone.style.position = 'absolute';
+            clone.style.top = '-9999px';
+            clone.style.left = '-9999px';
+            // Copy computed width/height to ensure layout is preserved
+            clone.style.width = getComputedStyle(element).width;
+
+            document.body.appendChild(clone);
+
+            try {
                 const isDark = document.documentElement.classList.contains('dark');
                 if (isDark) {
-                    const el = clonedNode as HTMLElement;
-                    // Apply invert to any element expecting dark mode inversion
-                    // This creates White Text pixels to match the White SVG Lines
-                    const targets = el.querySelectorAll('.dark\\:invert');
+                    // Collect all images including root
+                    let images: HTMLElement[] = Array.from(clone.querySelectorAll('img'));
+                    if (clone.tagName === 'IMG') {
+                        images.push(clone);
+                    }
+
+                    for (const img of images as HTMLImageElement[]) {
+                        const src = img.src;
+                        // Check if it's an SVG (file or data URI)
+                        if (src && (src.endsWith('.svg') || src.startsWith('data:image/svg+xml'))) {
+                            try {
+                                const resp = await fetch(src);
+                                const text = await resp.text();
+
+                                // Simple check for dark:invert in the SVG content
+                                if (text.includes('dark:invert')) {
+                                    const parser = new DOMParser();
+                                    const doc = parser.parseFromString(text, 'image/svg+xml');
+                                    const inverts = doc.querySelectorAll('.dark\\:invert');
+                                    let modified = false;
+
+                                    inverts.forEach(el => {
+                                        // Force invert filter
+                                        // Note: we can set style attribute
+                                        const currentStyle = el.getAttribute('style') || '';
+                                        el.setAttribute('style', `${currentStyle}; filter: invert(1);`);
+                                        modified = true;
+                                    });
+
+                                    // Also handle currentColor for stroke if needed
+                                    // But typically html-to-image handles currentColor if we set color on the img
+                                    // Let's set the cloned img color to white just in case
+                                    img.style.color = 'white';
+
+                                    if (modified) {
+                                        const serializer = new XMLSerializer();
+                                        const newSvg = serializer.serializeToString(doc);
+                                        const base64 = btoa(unescape(encodeURIComponent(newSvg)));
+                                        img.src = `data:image/svg+xml;base64,${base64}`;
+                                    }
+                                }
+                            } catch (err) {
+                                console.warn("Failed to process SVG for AI capture", err);
+                            }
+                        }
+                    }
+
+                    // Also handle standard HTML elements with dark:invert (for non-SVG cases)
+                    const targets = clone.querySelectorAll('.dark\\:invert');
                     targets.forEach(target => {
                         (target as HTMLElement).style.filter = 'invert(1)';
                     });
-                    // Also check root if needed (though usually it's the img inside)
-                    if (el.classList.contains('dark:invert')) {
-                        el.style.filter = 'invert(1)';
+                    if (clone.classList.contains('dark:invert')) {
+                        clone.style.filter = 'invert(1)';
                     }
                 }
+
+                // Capture the modified clone
+                return await toPng(clone, {
+                    backgroundColor: undefined,
+                    width: element.clientWidth, // Ensure dimensions match
+                    height: element.clientHeight
+                });
+            } finally {
+                if (clone.parentNode) {
+                    document.body.removeChild(clone);
+                }
             }
-        } as any);
+        })();
 
         // 3. Get AI Model
         const model = aiService.getModel();
