@@ -664,14 +664,15 @@ const convertBlockToHandwriting = async (index: number) => {
             markdown: newImageMarkdown
         });
 
+
         // Switch to edit mode for the new handwritten block
         block.isEditing = true;
 
         pushHistory();
         checkDirty();
-        if (autosaveEnabled.value) {
-            handleSaveFile();
-        }
+
+        // Always auto-save after conversion to ensure the new file link is persisted
+        handleSaveFile();
 
     } catch (e) {
         console.error("Failed to convert block to handwriting", e);
