@@ -92,6 +92,12 @@ const toggleAutosave = () => {
     localStorage.setItem('mathdown_autosave', String(autosaveEnabled.value));
 };
 
+const language = ref('English');
+
+const saveLanguage = () => {
+    localStorage.setItem('mathdown_language', language.value);
+};
+
 onMounted(() => {
     // initialize from localstorage or system pref
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -104,6 +110,10 @@ onMounted(() => {
 
     if (localStorage.getItem('mathdown_autosave') === 'true') {
         autosaveEnabled.value = true;
+    }
+
+    if (localStorage.getItem('mathdown_language')) {
+        language.value = localStorage.getItem('mathdown_language') || 'English';
     }
 
     if (localStorage.getItem('mathdown_ai_provider')) {
@@ -228,6 +238,19 @@ const testAiConnection = async () => {
                                     :class="autosaveEnabled ? 'translate-x-6' : 'translate-x-1'" />
                             </button>
                         </div>
+
+                        <div class="h-px bg-neutral-200 dark:bg-neutral-700"></div>
+
+                        <div class="flex items-center justify-between">
+                            <span class="text-neutral-700 dark:text-neutral-300 font-medium">Language</span>
+                            <select v-model="language" @change="saveLanguage"
+                                class="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded-md text-sm text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+                                <option value="English">English</option>
+                                <option value="French">Français</option>
+                                <option value="Italiano">Italiano</option>
+                                <option value="German">Deutsch</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Theme Tab -->
@@ -259,7 +282,7 @@ const testAiConnection = async () => {
                                         <div class="w-4 h-4 rounded-full shadow-sm"
                                             :style="{ backgroundColor: tag.color }"></div>
                                         <span class="text-sm text-neutral-700 dark:text-neutral-300">{{ tag.name
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                     <button v-if="!tag.isDefault" @click="removeTag(index)"
                                         class="p-1 text-neutral-400 hover:text-red-500 transition-colors">
