@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import type { Block } from '../types';
 import { fileService } from '../services/FileService';
 
@@ -12,7 +12,11 @@ const props = defineProps<{
 const emit = defineEmits<{
     (e: 'save'): void;
     (e: 'cancel'): void;
+    (e: 'preview-click', event: MouseEvent): void;
 }>();
+
+const previewRef = ref<HTMLDivElement | null>(null);
+const objectUrls = ref<string[]>([]);
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -86,9 +90,70 @@ onMounted(async () => {
     window.addEventListener('keyup', handleKeyup);
     document.addEventListener('mousedown', handleClickOutside);
 
-    // Load existing SVG if present
+    // Initial load of data
     if (props.block.markdown) {
         await loadFromMarkdown(props.block.markdown);
+    }
+
+    // If starting in edit mode, init canvas
+    if (props.block.isEditing) {
+        nextTick(initCanvas);
+    }
+});
+
+// Watch for edit mode toggle
+watch(() => props.block.isEditing, (newVal) => {
+    if (newVal) {
+        // Edit mode entered
+        nextTick(() => {
+            initCanvas();
+        });
+    } else {
+        // Preview mode entered
+        nextTick(renderImages);
+    }
+});
+
+watch(() => props.block.html, () => {
+    if (!props.block.isEditing) {
+        nextTick(renderImages);
+    }
+});
+
+const renderImages = async () => {
+    if (!previewRef.value || !props.rootHandle || !props.currentFilePath) return;
+
+    // Cleanup old URLs
+    objectUrls.value.forEach(url => URL.revokeObjectURL(url));
+    objectUrls.value = [];
+
+    const imgs = previewRef.value.querySelectorAll('img');
+    for (const img of Array.from(imgs)) {
+        const src = img.getAttribute('src');
+        // If it's a relative path (not data:, http:, or blob:)
+        if (src && !src.startsWith('data:') && !src.startsWith('http') && !src.startsWith('blob:')) {
+            try {
+                // Resolve path
+                // Simple resolution: relative to current file's directory
+                const fileDir = props.currentFilePath.substring(0, props.currentFilePath.lastIndexOf('/'));
+                const decodedSrc = decodeURIComponent(src).split('?')[0] || '';
+                const targetPath = fileDir ? `${fileDir}/${decodedSrc}` : decodedSrc;
+
+                const fileHandle = await fileService.getFileHandleByPath(props.rootHandle, targetPath);
+                const file = await fileHandle.getFile();
+                const url = URL.createObjectURL(file);
+                objectUrls.value.push(url);
+                img.src = url;
+            } catch (err) {
+                console.error('Failed to load image:', src, err);
+            }
+        }
+    }
+};
+
+onMounted(() => {
+    if (!props.block.isEditing) {
+        nextTick(renderImages);
     }
 });
 
@@ -531,10 +596,24 @@ const loadFromMarkdown = async (markdown: string) => {
         console.error("Failed to load existing drawing strokes", e);
     }
 };
+
+defineExpose({
+    get contentRef() {
+        return props.block.isEditing ? containerRef.value : previewRef.value;
+    }
+});
 </script>
 
 <template>
-    <div class="flex flex-col w-full h-[500px] border border-neutral-300 rounded bg-white relative overflow-hidden"
+    <!-- Preview Mode -->
+    <div v-if="!block.isEditing" @click="emit('preview-click', $event)" ref="previewRef"
+        class="prose prose-slate dark:prose-invert max-w-none px-8 py-4 rounded min-h-[2rem] border border-neutral-200 dark:border-neutral-700 cursor-pointer"
+        v-html="block.html">
+    </div>
+
+    <!-- Edit Mode -->
+    <div v-else
+        class="flex flex-col w-full h-[500px] border border-neutral-300 rounded bg-white relative overflow-hidden"
         ref="containerRef">
         <!-- Toolbar -->
         <div class="absolute top-2 left-2 z-10 flex gap-2">
