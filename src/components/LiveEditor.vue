@@ -726,7 +726,7 @@ const convertBlockToTextual = async (index: number) => {
         // For now just console log
         console.log("Capturing block for OCR...");
 
-        const dataUrl = await toPng(element, { backgroundColor: 'white' });
+        const dataUrl = await toPng(element, { backgroundColor: null });
 
         // 3. Get AI Model
         const model = aiService.getModel();
