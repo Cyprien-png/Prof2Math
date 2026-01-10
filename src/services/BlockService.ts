@@ -76,9 +76,11 @@ export class BlockService {
             let name: string | undefined = undefined;
             let type: 'text' | 'handwriting' = 'text';
             let isSpoiler = false;
+            let tag: string | undefined = undefined;
 
             if (metadataString) {
                 const trimmed = metadataString.trim();
+
                 if (trimmed.startsWith('type=')) {
                     // e.g. type="handwriting" name="foo"
                     // Simple attribute parser
@@ -92,26 +94,27 @@ export class BlockService {
                         name = nameMatch[1];
                     }
 
+                    const tagMatch = trimmed.match(/tag=["']?([^"']+)["']?/);
+                    if (tagMatch) {
+                        tag = tagMatch[1];
+                    }
+
                     if (trimmed.includes('spoiler')) {
                         isSpoiler = true;
                     }
                 } else {
                     // Legacy: It's just the name
-                    // BUT check for spoiler flag even here? 
-                    // Let's assume spoiler implies switching to attribute format or we support mixed?
-                    // Safe bet: if it has attributes, use attributes.
                     if (trimmed.length > 0) {
                         // Check legacy cases
                         if (!trimmed.includes('=')) {
                             name = trimmed;
                         } else {
-                            // It has equals but didn't start with type=. 
-                            // Example: name="foo" spoiler
-                            // Let's use a more robust regex approach if possible, but keep it simple as requested.
-                            // The user's code relies on `trimmed.startsWith('type=')`? 
-                            // Actually, let's just make it robust.
+                            // Robust fallback
                             const nameMatch = trimmed.match(/name=["']?([^"']+)["']?/);
                             if (nameMatch) name = nameMatch[1];
+
+                            const tagMatch = trimmed.match(/tag=["']?([^"']+)["']?/);
+                            if (tagMatch) tag = tagMatch[1];
 
                             if (trimmed.includes('spoiler')) isSpoiler = true;
                         }
@@ -124,6 +127,7 @@ export class BlockService {
                 block.isSpoiler = true;
                 block.isRevealed = false;
             }
+            if (tag) block.tag = tag;
             newBlocks.push(block);
         }
 
@@ -134,12 +138,13 @@ export class BlockService {
         return blocks.map(b => {
             let metadata = '';
 
-            if (b.type === 'handwriting' || b.isSpoiler) {
-                // New serialization format for typed blocks OR spoilers
+            if (b.type === 'handwriting' || b.isSpoiler || b.tag) {
+                // New serialization format for typed blocks OR spoilers OR tags
                 if (b.type === 'handwriting') metadata += ` type="handwriting"`;
                 else metadata += ` type="text"`;
 
                 if (b.name) metadata += ` name="${b.name}"`;
+                if (b.tag) metadata += ` tag="${b.tag}"`;
                 if (b.isSpoiler) metadata += ` spoiler`;
 
                 return `<!-- block:${metadata} -->\n${b.markdown}`;

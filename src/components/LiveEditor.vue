@@ -19,6 +19,8 @@ import { toPng } from 'html-to-image';
 import { generateText } from 'ai';
 import { PROMPTS } from '../prompts';
 import { aiService } from '../services/AiService';
+import { tagService } from '../services/TagService';
+import type { Tag } from '../types';
 
 // --- Props ---
 const props = defineProps<{
@@ -37,6 +39,22 @@ const isHistoryNavigating = ref(false);
 const showSettings = ref(false);
 const autosaveEnabled = ref(false);
 const autosaveTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+
+// --- Tag Logic ---
+const availableTags = ref<Tag[]>([]);
+
+const loadTags = () => {
+    availableTags.value = tagService.getTags();
+};
+
+const setBlockTag = (index: number, tagName: string) => {
+    const block = blocks.value[index];
+    if (block) {
+        if (block.tag === tagName) block.tag = undefined;
+        else block.tag = tagName;
+        saveBlock(index);
+    }
+};
 
 // Command Menu State
 const showCommandMenu = ref(false);
@@ -544,6 +562,13 @@ const handleGlobalKeydown = (e: KeyboardEvent) => {
 
 onMounted(() => {
     window.addEventListener('keydown', handleGlobalKeydown);
+    loadTags();
+});
+
+watch(showSettings, (isOpen) => {
+    if (!isOpen) {
+        loadTags();
+    }
 });
 
 onUnmounted(() => {
@@ -815,6 +840,7 @@ const revealBlock = (index: number) => {
         block.isRevealed = true;
     }
 };
+
 
 // --- File System Logic ---
 const rootDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
@@ -1355,7 +1381,8 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
                                 @convert="convertBlockToHandwriting(index)"
                                 @convert-to-textual="convertBlockToTextual(index)"
                                 @toggle-spoiler="toggleSpoiler(index)" :is-spoiler="block.isSpoiler"
-                                :is-revealed="block.isRevealed" @reveal="revealBlock(index)" />
+                                :is-revealed="block.isRevealed" @reveal="revealBlock(index)"
+                                :available-tags="availableTags" @set-tag="(tag: string) => setBlockTag(index, tag)" />
 
                             <!-- Add New Block Area -->
                             <div class="flex gap-4 md:opacity-0 hover:opacity-100 transition-all duration-200">

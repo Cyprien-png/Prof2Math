@@ -7,6 +7,7 @@ export interface Block {
     type?: 'text' | 'handwriting'; // defaults to 'text'
     isSpoiler?: boolean;
     isRevealed?: boolean;
+    tag?: string;
 }
 
 export interface Tag {

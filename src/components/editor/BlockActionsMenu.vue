@@ -3,11 +3,14 @@ import { computed } from 'vue';
 import RobotIcon from '../icons/RobotIcon.vue';
 import HiddenIcon from '../icons/HiddenIcon.vue';
 
+import type { Tag } from '../../types';
+
 const props = defineProps<{
     isOpen: boolean;
     position?: { x: number, y: number };
     blockType: 'text' | 'handwriting';
     isSpoiler?: boolean;
+    availableTags?: Tag[];
 }>();
 
 const emit = defineEmits<{
@@ -20,6 +23,7 @@ const emit = defineEmits<{
     (e: 'toggleSpoiler'): void;
     (e: 'mouseenter'): void;
     (e: 'mouseleave'): void;
+    (e: 'setTag', tagName: string): void;
 }>();
 
 const style = computed(() => {
@@ -70,6 +74,31 @@ const style = computed(() => {
                     <RobotIcon class="size-3" />
                     Convert to textual
                 </button>
+
+                <div class="h-px bg-neutral-100 dark:bg-neutral-700 my-1"></div>
+
+                <div class="relative group/tag">
+                    <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 flex items-center justify-between">
+                        Tag
+                        <svg class="w-2.5 h-2.5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                    <div
+                        class="absolute left-full top-0 py-1 w-32 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md shadow-lg hidden group-hover/tag:block z-[9999]">
+                        <template v-if="availableTags && availableTags.length > 0">
+                            <button v-for="tag in availableTags" :key="tag.name" @click.stop="emit('setTag', tag.name)"
+                                class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
+                                <div class="w-2 h-2 rounded-full" :style="{ backgroundColor: tag.color }"></div>
+                                {{ tag.name }}
+                            </button>
+                        </template>
+                        <div v-else class="px-3 py-1.5 text-xs text-neutral-400 italic">
+                            No tags
+                        </div>
+                    </div>
+                </div>
 
                 <div class="h-px bg-neutral-100 dark:bg-neutral-700 my-1"></div>
 

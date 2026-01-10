@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { Block } from '../../types';
+import { computed, ref } from 'vue';
+import type { Block, Tag } from '../../types';
 import BlockActionsMenu from './BlockActionsMenu.vue';
 import HandwrittenBlock from '../HandwrittenBlock.vue';
 import TextualBlock from './TextualBlock.vue';
@@ -11,6 +11,7 @@ const props = defineProps<{
     activeMenuBlockId: string | null;
     rootHandle: FileSystemDirectoryHandle | null;
     currentFilePath: string | null;
+    availableTags?: Tag[];
 }>();
 
 const emit = defineEmits<{
@@ -29,7 +30,14 @@ const emit = defineEmits<{
     (e: 'paste', event: ClipboardEvent): void;
     (e: 'toggle-spoiler', index: number): void;
     (e: 'reveal', index: number): void;
+    (e: 'set-tag', tagName: string): void;
 }>();
+
+const tagColor = computed(() => {
+    if (!props.block.tag || !props.availableTags) return null;
+    const found = props.availableTags.find(t => t.name === props.block.tag);
+    return found ? found.color : null;
+});
 
 // Menu Logic
 const menuPosition = ref<{ x: number, y: number } | undefined>(undefined);
@@ -102,9 +110,10 @@ defineExpose({
 </script>
 
 <template>
-    <div class="relative group rounded-md transition-all duration-200"
+    <div class="relative group rounded-md transition-all duration-200 border-2"
         :class="{ 'dark:bg-neutral-50/10 bg-neutral-400/10': block.isEditing, 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50 block-hover-effect': !block.isEditing }"
-        @mouseleave="emit('mouseleave')" @contextmenu="onContextMenu">
+        :style="{ borderColor: tagColor || 'transparent' }" @mouseleave="emit('mouseleave')"
+        @contextmenu="onContextMenu">
 
         <!-- Block Name Label -->
         <div v-if="block.name"
@@ -119,7 +128,7 @@ defineExpose({
                 @mouseleave="onMenuMouseLeave" @duplicate="emit('duplicate', index)" @rename="emit('rename', index)"
                 @delete="emit('remove', index)" @convert="emit('convert', index)"
                 @convert-to-textual="emit('convertToTextual', index)" @toggleSpoiler="emit('toggle-spoiler', index)"
-                :isSpoiler="block.isSpoiler" />
+                :isSpoiler="block.isSpoiler" :available-tags="availableTags" @setTag="(tag) => emit('set-tag', tag)" />
         </div>
 
         <template v-if="block.type === 'handwriting'">
