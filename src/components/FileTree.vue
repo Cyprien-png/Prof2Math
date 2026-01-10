@@ -22,6 +22,7 @@ const emit = defineEmits<{
     (e: 'file-moved', event: { sourcePath: string; newPath: string }): void;
     (e: 'create-file', node: FileTreeNode): void;
     (e: 'create-folder', node: FileTreeNode): void;
+    (e: 'create-file-template', node: FileTreeNode): void;
 }>();
 
 
@@ -36,7 +37,6 @@ const showMenu = computed(() => !!props.node.path && activeMenuPath.value === pr
 
 
 watch(() => [props.node, props.activeFileHandle], async () => {
-    // ... existing isActive logic ... 
     if (props.node.kind === 'file' && props.activeFileHandle) {
         if (props.node.name === props.activeFileHandle.name) {
             try {
@@ -79,34 +79,18 @@ const handleMenuToggle = (e: Event) => {
     }
 };
 
-
-
-const onAction = async (action: 'rename' | 'duplicate' | 'delete' | 'edit' | 'new-file' | 'new-folder') => {
+const onAction = async (action: 'rename' | 'duplicate' | 'delete' | 'edit' | 'new-file' | 'new-folder' | 'new-file-template') => {
     activeMenuPath.value = null;
 
-    if (action === 'delete') {
-        // ... existing implementation ...
-        emit('delete', props.node);
-        return;
-    }
-
-    if (action === 'rename') {
-        emit('rename', props.node);
-        return;
-    }
-
-    if (action === 'duplicate') {
-        emit('duplicate', props.node);
-        return;
-    }
-
-    if (action === 'new-file') {
-        emit('create-file', props.node);
-        return;
-    }
+    // ... existing handlers ...
 
     if (action === 'new-folder') {
         emit('create-folder', props.node);
+        return;
+    }
+
+    if (action === 'new-file-template') {
+        emit('create-file-template', props.node);
         return;
     }
 };
@@ -405,7 +389,7 @@ const displayName = computed(() => {
                                 class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
                                 New empty file
                             </button>
-                            <button
+                            <button @click="onAction('new-file-template')"
                                 class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400">
                                 New file from template
                             </button>

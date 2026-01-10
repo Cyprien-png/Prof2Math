@@ -6,6 +6,7 @@ import TopBar from './TopBar.vue';
 import SideMenu from './SideMenu.vue';
 import Home from './Home.vue'; // Import Home
 import SettingsDialog from './SettingsDialog.vue';
+import TemplateDialog from './TemplateDialog.vue';
 import { fileService } from '../services/FileService';
 import { blockService } from '../services/BlockService';
 import { commandService } from '../services/CommandService';
@@ -37,6 +38,8 @@ const history = ref<Block[][]>([]);
 const historyIndex = ref(-1);
 const isHistoryNavigating = ref(false);
 const showSettings = ref(false);
+const showTemplateDialog = ref(false);
+const templateContextNode = ref<FileTreeNode | null>(null);
 const autosaveEnabled = ref(false);
 const autosaveTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1308,22 +1311,80 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
             };
             handleOpenFileFromTree(newNode);
         }
+    } catch (err) {
+        console.error('Failed to create new item:', err);
+        alert(`Failed to create ${kind}: ${err}`);
+    }
+};
 
-        // If we created inside a folder, we should ensure it's expanded?
-        // logic for toggle-folder might be needed or loadDirectory preserves state?
-        // loadDirectory currently resets tree state? No, fileService.readDirectory just reads.
-        // FileTree component state (isOpen) is internal?
-        // FileTreeNode struct has isOpen? Yes.
-        // We might need to ensure the parent folder is marked isOpen if we added to it.
-        if (node.kind === 'directory') {
-            node.isOpen = true;
+const handleCreateFileTemplate = (node: FileTreeNode) => {
+    templateContextNode.value = node;
+    showTemplateDialog.value = true;
+};
+
+const handleConfirmTemplateCreate = async (data: { filename: string; template: string; subject: string; description: string }) => {
+    showTemplateDialog.value = false;
+    if (!templateContextNode.value || !rootDirectoryHandle.value) return;
+
+    // Resolve Context
+    // Copied from handleCreateNewItem logic
+    const node = templateContextNode.value;
+    let parentHandle = rootDirectoryHandle.value;
+    let parentPath = '';
+
+    if (node.kind === 'directory') {
+        parentHandle = node.handle as FileSystemDirectoryHandle;
+        parentPath = node.path || node.name;
+        if (node.path) parentPath = node.path;
+    } else {
+        if (node.path && node.path !== node.name) {
+            const pathParts = node.path.split('/');
+            pathParts.pop();
+            if (pathParts.length > 0) {
+                parentPath = pathParts.join('/');
+                // @ts-ignore
+                parentHandle = await fileService.getDirectoryHandleByPath(rootDirectoryHandle.value, parentPath);
+            }
+        }
+    }
+
+    let finalName = data.filename;
+    if (!finalName.endsWith('.mthd')) {
+        finalName += '.mthd';
+    }
+
+    let newHandle: FileSystemFileHandle | null = null;
+
+    try {
+        // @ts-ignore
+        const newFileHandle = await parentHandle.getFileHandle(finalName, { create: true });
+        newHandle = newFileHandle;
+        // @ts-ignore
+        const writable = await newFileHandle.createWritable();
+        await writable.write(DEFAULT_FILE_CONTENT);
+        await writable.close();
+
+        await loadDirectory();
+
+        if (newHandle) {
+            const fullPath = parentPath ? `${parentPath}/${finalName}` : finalName;
+
+            const newNode: FileTreeNode = {
+                kind: 'file',
+                name: finalName,
+                path: fullPath,
+                handle: newHandle
+            };
+            handleOpenFileFromTree(newNode);
         }
 
     } catch (err) {
-        console.error('Failed to create item:', err);
-        alert(`Failed to create item: ${err}`);
+        console.error('Failed to create template file:', err);
+        alert(`Failed to create file: ${err}`);
     }
 };
+
+
 
 </script>
 
@@ -1336,8 +1397,8 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
             @open-file="handleOpenFileFromTree" @toggle-folder="handleToggleFolder"
             @restore-access="handleRestoreAccess" @delete-item="handleDeleteItem" @rename-item="handleRenameItem"
             @duplicate-item="handleDuplicateItem" @file-moved="handleFileMoved"
-            @create-file="handleCreateNewItem($event, 'file')"
-            @create-folder="handleCreateNewItem($event, 'directory')" />
+            @create-file="handleCreateNewItem($event, 'file')" @create-folder="handleCreateNewItem($event, 'directory')"
+            @create-file-template="handleCreateFileTemplate" />
 
         <!-- Main Content (Flex Column) -->
         <!-- Loading Overlay -->
@@ -1415,6 +1476,9 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
         <AiDiffDialog :is-open="showAiDiffDialog" :original-image="pendingAiConversion?.image || ''"
             :ai-text="pendingAiConversion?.text || ''" @close="showAiDiffDialog = false"
             @cancel="showAiDiffDialog = false" @confirm="handleConfirmAiConversion" />
+
+        <TemplateDialog :is-open="showTemplateDialog" @close="showTemplateDialog = false"
+            @create="handleConfirmTemplateCreate" />
     </div>
 
     <CommandMenu :items="commandSuggestions" :selected-index="commandMenuIndex" :position="commandMenuPosition"

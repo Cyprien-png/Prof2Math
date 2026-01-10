@@ -34,6 +34,7 @@ const emit = defineEmits<{
         FileTreeNode): void; (e: 'rename-item', node: FileTreeNode): void; (e: 'duplicate-item', node: FileTreeNode):
         void; (e: 'file-moved', event: { sourcePath: string; newPath: string }): void;
     (e: 'create-file', node: FileTreeNode): void; (e: 'create-folder', node: FileTreeNode): void;
+    (e: 'create-file-template', node: FileTreeNode): void;
 }>();
 
 const isDragOver = ref(false);
@@ -125,7 +126,7 @@ const handleRootContextMenu = (e: MouseEvent) => {
     };
 };
 
-const onRootAction = (action: 'new-file' | 'new-folder') => {
+const onRootAction = (action: 'new-file' | 'new-folder' | 'new-file-template') => {
     showRootMenu.value = false;
     if (!props.rootHandle) return;
 
@@ -143,6 +144,8 @@ const onRootAction = (action: 'new-file' | 'new-folder') => {
 
     if (action === 'new-file') {
         emit('create-file', rootNode);
+    } else if (action === 'new-file-template') {
+        emit('create-file-template', rootNode);
     } else {
         emit('create-folder', rootNode);
     }
@@ -185,7 +188,8 @@ const closeRootMenu = () => {
                     @open-file="emit('open-file', $event)" @toggle-folder="emit('toggle-folder', $event)"
                     @delete="emit('delete-item', $event)" @rename="emit('rename-item', $event)"
                     @duplicate="emit('duplicate-item', $event)" @file-moved="emit('file-moved', $event)"
-                    @create-file="emit('create-file', $event)" @create-folder="emit('create-folder', $event)" />
+                    @create-file="emit('create-file', $event)" @create-folder="emit('create-folder', $event)"
+                    @create-file-template="emit('create-file-template', $event)" />
 
                 <NoLocalStorage v-else />
 
@@ -229,8 +233,8 @@ const closeRootMenu = () => {
                             class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
                             New empty file
                         </button>
-                        <button
-                            class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400">
+                        <button @click="onRootAction('new-file-template')"
+                            class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
                             New file from template
                         </button>
                     </div>
