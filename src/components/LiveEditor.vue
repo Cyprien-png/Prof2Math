@@ -752,6 +752,12 @@ const convertBlockToTextual = async (index: number) => {
             });
             // Update blocks list reference to trigger reactivity if needed
             // blockService.updateBlock mutates the array in place, so vue should pick it up.
+
+            pushHistory();
+            checkDirty();
+
+            // Always auto-save after conversion
+            handleSaveFile();
         }
 
     } catch (e: any) {
