@@ -77,7 +77,7 @@ const handleConfirm = () => {
                         <!-- Image container with checkered background for transparency -->
                         <div
                             class="relative bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMCAwSDRWMHoiIGZpbGw9IiNlZWVlZWUiLz48cGF0aCBkPSZNNDAgNDhWNHoiIGZpbGw9IiNlZWVlZWUiLz48L3N2Zz4=')] rounded border border-neutral-300 dark:border-neutral-600 p-2 bg-white dark:invert">
-                            <img :src="originalImage" class="max-w-full h-auto object-contain"
+                            <img :src="originalImage" class="max-w-full h-auto object-contain dark:invert"
                                 alt="Original Handwriting" />
                         </div>
                     </div>
