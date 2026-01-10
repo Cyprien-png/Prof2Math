@@ -78,14 +78,14 @@ const handleConfirm = () => {
                         <div
                             class="relative rounded border border-neutral-300 dark:border-neutral-600 p-2 bg-white dark:bg-neutral-900 overflow-hidden">
                             <!-- Background Layer (Checkerboard) -->
-                            <!-- Always Light Grid (Removed dark:invert) -->
+                            <!-- In Dark Mode: We invert this layer to turn Light Grid -> Dark Grid -->
                             <div
-                                class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMCAwSDRWMHoiIGZpbGw9IiNlZWVlZWUiLz48cGF0aCBkPSZNNDAgNDhWNHoiIGZpbGw9IiNlZWVlZWUiLz48L3N2Zz4=')] opacity-100">
+                                class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMCAwSDRWMHoiIGZpbGw9IiNlZWVlZWUiLz48cGF0aCBkPSZNNDAgNDhWNHoiIGZpbGw9IiNlZWVlZWUiLz48L3N2Zz4=')] dark:invert opacity-100">
                             </div>
 
                             <!-- Image Layer -->
-                            <!-- Inverts White Ink (Dark Mode Capture) to Black Ink -->
-                            <img :src="originalImage" class="relative z-10 max-w-full h-auto object-contain dark:invert"
+                            <!-- We do NOT invert this. If captured in Dark Mode, ink is White. White on Dark Grid = Visible. -->
+                            <img :src="originalImage" class="relative z-10 max-w-full h-auto object-contain"
                                 alt="Original Handwriting" />
                         </div>
                     </div>
