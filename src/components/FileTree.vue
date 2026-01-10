@@ -387,10 +387,30 @@ const displayName = computed(() => {
 
 
 
-                    <button @click="onAction('new-file')"
-                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
-                        New File
-                    </button>
+
+                    <div class="relative group/newfile">
+                        <button
+                            class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 flex items-center justify-between">
+                            New File
+                            <svg class="w-2.5 h-2.5 text-neutral-400" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                        <!-- Submenu -->
+                        <div
+                            class="absolute left-full top-0 py-1 w-40 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md shadow-lg hidden group-hover/newfile:block">
+                            <button @click="onAction('new-file')"
+                                class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                                New empty file
+                            </button>
+                            <button
+                                class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400">
+                                New file from template
+                            </button>
+                        </div>
+                    </div>
                     <button @click="onAction('new-folder')"
                         class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
                         New Folder
