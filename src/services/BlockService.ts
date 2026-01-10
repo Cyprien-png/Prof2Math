@@ -75,6 +75,7 @@ export class BlockService {
             // Parse metadata
             let name: string | undefined = undefined;
             let type: 'text' | 'handwriting' = 'text';
+            let isSpoiler = false;
 
             if (metadataString) {
                 const trimmed = metadataString.trim();
@@ -83,23 +84,47 @@ export class BlockService {
                     // Simple attribute parser
                     const typeMatch = trimmed.match(/type=["']?(\w+)["']?/);
                     if (typeMatch) {
-                        const t = typeMatch[1];
-                        if (t === 'handwriting') type = 'handwriting';
+                        if (typeMatch[1] === 'handwriting') type = 'handwriting';
                     }
 
                     const nameMatch = trimmed.match(/name=["']?([^"']+)["']?/);
                     if (nameMatch) {
                         name = nameMatch[1];
                     }
+
+                    if (trimmed.includes('spoiler')) {
+                        isSpoiler = true;
+                    }
                 } else {
                     // Legacy: It's just the name
+                    // BUT check for spoiler flag even here? 
+                    // Let's assume spoiler implies switching to attribute format or we support mixed?
+                    // Safe bet: if it has attributes, use attributes.
                     if (trimmed.length > 0) {
-                        name = trimmed;
+                        // Check legacy cases
+                        if (!trimmed.includes('=')) {
+                            name = trimmed;
+                        } else {
+                            // It has equals but didn't start with type=. 
+                            // Example: name="foo" spoiler
+                            // Let's use a more robust regex approach if possible, but keep it simple as requested.
+                            // The user's code relies on `trimmed.startsWith('type=')`? 
+                            // Actually, let's just make it robust.
+                            const nameMatch = trimmed.match(/name=["']?([^"']+)["']?/);
+                            if (nameMatch) name = nameMatch[1];
+
+                            if (trimmed.includes('spoiler')) isSpoiler = true;
+                        }
                     }
                 }
             }
 
-            newBlocks.push(this.createBlock(markdown, name, type));
+            const block = this.createBlock(markdown, name, type);
+            if (isSpoiler) {
+                block.isSpoiler = true;
+                block.isRevealed = false;
+            }
+            newBlocks.push(block);
         }
 
         return newBlocks;
@@ -109,10 +134,14 @@ export class BlockService {
         return blocks.map(b => {
             let metadata = '';
 
-            if (b.type === 'handwriting') {
-                // New serialization format for typed blocks
-                metadata += ` type="handwriting"`;
+            if (b.type === 'handwriting' || b.isSpoiler) {
+                // New serialization format for typed blocks OR spoilers
+                if (b.type === 'handwriting') metadata += ` type="handwriting"`;
+                else metadata += ` type="text"`;
+
                 if (b.name) metadata += ` name="${b.name}"`;
+                if (b.isSpoiler) metadata += ` spoiler`;
+
                 return `<!-- block:${metadata} -->\n${b.markdown}`;
             } else {
                 // Legacy / Standard Text format
@@ -131,7 +160,9 @@ export class BlockService {
             html: this.renderHtml(markdown),
             isEditing: false,
             name,
-            type
+            type,
+            isSpoiler: false, // Default false, parsed will override
+            isRevealed: undefined
         };
     }
 

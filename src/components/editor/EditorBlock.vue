@@ -27,6 +27,8 @@ const emit = defineEmits<{
     (e: 'keydown', event: KeyboardEvent, index: number): void;
     (e: 'mouseleave'): void;
     (e: 'paste', event: ClipboardEvent): void;
+    (e: 'toggle-spoiler', index: number): void;
+    (e: 'reveal', index: number): void;
 }>();
 
 // Menu Logic
@@ -116,19 +118,22 @@ defineExpose({
                 :block-type="block.type || 'text'" @toggle="onMenuToggle" @mouseenter="onMenuMouseEnter"
                 @mouseleave="onMenuMouseLeave" @duplicate="emit('duplicate', index)" @rename="emit('rename', index)"
                 @delete="emit('remove', index)" @convert="emit('convert', index)"
-                @convert-to-textual="emit('convertToTextual', index)" />
+                @convert-to-textual="emit('convertToTextual', index)" @toggleSpoiler="emit('toggle-spoiler', index)"
+                :isSpoiler="block.isSpoiler" />
         </div>
 
         <template v-if="block.type === 'handwriting'">
             <HandwrittenBlock ref="handwrittenBlockRef" :block="block" :root-handle="rootHandle"
                 :current-file-path="currentFilePath" @save="emit('save', index)" @cancel="emit('save', index)"
-                @preview-click="emit('edit', index)" />
+                @preview-click="emit('edit', index)" :is-spoiler="block.isSpoiler" :is-revealed="block.isRevealed"
+                @reveal="emit('reveal', index)" />
         </template>
         <template v-else>
             <TextualBlock ref="textualBlockRef" :block="block" :index="index" :root-handle="rootHandle"
                 :current-file-path="currentFilePath" @edit="emit('edit', index)" @save="emit('save', index)"
                 @input="emit('input', $event)" @keydown="(e, idx) => emit('keydown', e, idx)"
-                @paste="emit('paste', $event)" />
+                @paste="emit('paste', $event)" :is-spoiler="block.isSpoiler" :is-revealed="block.isRevealed"
+                @reveal="emit('reveal', index)" />
         </template>
     </div>
 </template>

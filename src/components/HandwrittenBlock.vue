@@ -5,15 +5,24 @@ import { fileService } from '../services/FileService';
 import PencilIcon from './icons/PencilIcon.vue';
 import EraserIcon from './icons/EraserIcon.vue';
 
+import EyeIcon from './icons/EyeIcon.vue';
+import HiddenIcon from './icons/HiddenIcon.vue';
+
 const props = defineProps<{
     block: Block;
     rootHandle: FileSystemDirectoryHandle | null;
     currentFilePath: string | null;
+    isSelected?: boolean;
+    isSpoiler?: boolean;
+    isRevealed?: boolean;
 }>();
 
 const emit = defineEmits<{
     (e: 'save'): void;
     (e: 'cancel'): void;
+    (e: 'update:markdown', value: string): void;
+    (e: 'edit'): void;
+    (e: 'reveal'): void;
     (e: 'preview-click', event: MouseEvent): void;
 }>();
 
@@ -674,9 +683,21 @@ defineExpose({
 
 <template>
     <!-- Preview Mode -->
-    <div v-if="!block.isEditing" @click="emit('preview-click', $event)" ref="previewRef"
-        class="prose prose-slate dark:prose-invert max-w-none px-8 py-4 rounded min-h-[2rem] border border-neutral-200 dark:border-neutral-700 cursor-pointer"
-        v-html="block.html">
+    <div v-if="!block.isEditing" class="relative w-full group">
+        <div @click="emit('preview-click', $event)" ref="previewRef"
+            class="prose prose-slate dark:prose-invert max-w-none px-8 py-4 rounded min-h-[2rem] border border-neutral-200 dark:border-neutral-700 cursor-pointer"
+            :class="{ 'opacity-50 blur-md': isSpoiler && !isRevealed }" v-html="block.html">
+        </div>
+
+        <!-- Spoiler Overlay -->
+        <div v-if="isSpoiler && !isRevealed"
+            class="absolute group inset-0 z-10 flex items-center justify-center cursor-pointer transition-colors hover:bg-neutral-100/10"
+            @click.stop="emit('reveal')">
+            <EyeIcon
+                class="absolute size-6 text-neutral-600 dark:text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <HiddenIcon
+                class="absolute size-6 text-neutral-600 dark:text-neutral-300 opacity-100 group-hover:opacity-0 transition-opacity" />
+        </div>
     </div>
 
     <!-- Edit Mode -->

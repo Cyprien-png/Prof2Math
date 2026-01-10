@@ -5,6 +5,8 @@ export interface Block {
     isEditing: boolean;
     name?: string;
     type?: 'text' | 'handwriting'; // defaults to 'text'
+    isSpoiler?: boolean;
+    isRevealed?: boolean;
 }
 
 export interface FileTreeNode {

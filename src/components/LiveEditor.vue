@@ -792,6 +792,30 @@ const handleConfirmAiConversion = (newText: string) => {
     pendingAiConversion.value = null;
 };
 
+// --- Spoiler Logic ---
+const toggleSpoiler = (index: number) => {
+    const block = blocks.value[index];
+    if (!block) return;
+
+    if (block.isSpoiler) {
+        // Turning OFF
+        block.isSpoiler = undefined;
+        block.isRevealed = undefined;
+    } else {
+        // Turning ON
+        block.isSpoiler = true;
+        block.isRevealed = false; // Start hidden
+    }
+    saveBlock(index);
+};
+
+const revealBlock = (index: number) => {
+    const block = blocks.value[index];
+    if (block) {
+        block.isRevealed = true;
+    }
+};
+
 // --- File System Logic ---
 const rootDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
 const fileTree = ref<FileTreeNode[]>([]);
@@ -1329,7 +1353,9 @@ const handleCreateNewItem = async (node: FileTreeNode, kind: 'file' | 'directory
                                 @remove="removeBlock(index)" @edit="editBlock(index)" @rename="promptRenameBlock(index)"
                                 @keydown="handleKeydown($event, index)" @paste="handlePaste($event, index)"
                                 @convert="convertBlockToHandwriting(index)"
-                                @convert-to-textual="convertBlockToTextual(index)" />
+                                @convert-to-textual="convertBlockToTextual(index)"
+                                @toggle-spoiler="toggleSpoiler(index)" :is-spoiler="block.isSpoiler"
+                                :is-revealed="block.isRevealed" @reveal="revealBlock(index)" />
 
                             <!-- Add New Block Area -->
                             <div class="flex gap-4 md:opacity-0 hover:opacity-100 transition-all duration-200">

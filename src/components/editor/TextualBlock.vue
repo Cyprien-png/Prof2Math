@@ -4,11 +4,16 @@ import type { Block } from '../../types';
 import { fileService } from '../../services/FileService';
 import { getCaretCoordinates } from '../../utils/caret';
 
+import EyeIcon from '../icons/EyeIcon.vue';
+import HiddenIcon from '../icons/HiddenIcon.vue';
+
 const props = defineProps<{
     block: Block;
     index: number;
     rootHandle: FileSystemDirectoryHandle | null;
     currentFilePath: string | null;
+    isSpoiler?: boolean;
+    isRevealed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -17,14 +22,19 @@ const emit = defineEmits<{
     (e: 'input', event: Event): void;
     (e: 'keydown', event: KeyboardEvent, index: number): void;
     (e: 'paste', event: ClipboardEvent): void;
+    (e: 'reveal'): void;
 }>();
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
-const contentRef = ref<HTMLElement | null>(null);
+const contentRef = ref<HTMLDivElement | null>(null);
 const targetLine = ref<number | null>(null);
 const targetClickY = ref<number | null>(null);
 
 const onPreviewClick = (e: MouseEvent) => {
+    if (props.isSpoiler && !props.isRevealed) {
+        emit('reveal');
+        return;
+    }
     // Try to find the clicked element or its parent with data-source-line
     const target = e.target as HTMLElement;
     const lineEl = target.closest('[data-source-line]');
@@ -232,9 +242,21 @@ defineExpose({ focusTextarea, contentRef });
 
 <template>
     <!-- Preview Mode -->
-    <div v-if="!block.isEditing" @click="onPreviewClick" ref="contentRef"
-        class="prose prose-slate dark:prose-invert max-w-none px-8 py-4 rounded min-h-[2rem] border border-neutral-200 dark:border-neutral-700 cursor-text"
-        v-html="block.html"></div>
+    <div v-if="!block.isEditing" class="relative w-full group">
+        <div @click="onPreviewClick" ref="contentRef"
+            class="prose prose-slate dark:prose-invert max-w-none px-8 py-4 rounded min-h-[2rem] border border-neutral-200 dark:border-neutral-700 cursor-text"
+            :class="{ 'opacity-50 blur-md select-none': isSpoiler && !isRevealed }" v-html="block.html"></div>
+
+        <!-- Spoiler Overlay -->
+        <div v-if="isSpoiler && !isRevealed"
+            class="absolute group inset-0 z-10 flex items-center justify-center cursor-pointer transition-colors hover:bg-neutral-100/10"
+            @click.stop="emit('reveal')">
+            <EyeIcon
+                class="absolute size-6 text-neutral-600 dark:text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <HiddenIcon
+                class="absolute size-6 text-neutral-600 dark:text-neutral-300 opacity-100 group-hover:opacity-0 transition-opacity" />
+        </div>
+    </div>
 
     <!-- Edit Mode -->
     <div v-else class="relative w-full">
