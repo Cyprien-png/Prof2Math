@@ -710,7 +710,7 @@ defineExpose({
         <div v-if="backgroundImage" class="absolute top-0 left-0 w-full h-full pointer-events-none"
             :style="{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0' }">
             <img :src="backgroundImage" :style="{ width: bgImageWidth + 'px', height: bgImageHeight + 'px' }"
-                class="absolute top-0 left-0 object-contain pointer-events-none" alt="Background" />
+                class="absolute top-0 left-0 object-contain pointer-events-none dark:invert" alt="Background" />
         </div>
 
         <canvas ref="canvasRef" class="w-full h-full touch-none"
