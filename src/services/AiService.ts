@@ -56,6 +56,24 @@ class AiService {
             prompt
         });
 
+        return this.formatAiResponse(text);
+    }
+
+    private formatAiResponse(text: string): string {
+        const trimmed = text.trim();
+        // Check if it starts with ```markdown (or just ```) and ends with ```
+        // and importantly, that it looks like a wrapper (start and end)
+        const startRegex = /^```(markdown)?/i;
+        const endRegex = /```$/;
+
+        if (startRegex.test(trimmed) && endRegex.test(trimmed)) {
+            // Remove the start match
+            let cleaned = trimmed.replace(startRegex, '');
+            // Remove the end match (last 3 chars generally, but regex handles it)
+            cleaned = cleaned.replace(endRegex, '');
+            return cleaned.trim();
+        }
+
         return text;
     }
 }
