@@ -108,7 +108,7 @@ defineExpose({
 
         <!-- Block Name Label -->
         <div v-if="block.name"
-            class="absolute -top-3 left-0 mx-2 px-2 py-1 bg-neutral-50 dark:bg-neutral-900 text-xs font-mono text-neutral-500 select-none z-10">
+            class="absolute -top-3 left-0 mx-2 px-2 py-1 bg-white rounded-md dark:bg-neutral-900 text-xs font-mono text-neutral-500 select-none z-10">
             {{ block.name }}
         </div>
 
