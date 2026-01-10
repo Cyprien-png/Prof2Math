@@ -2,6 +2,8 @@
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import type { Block } from '../types';
 import { fileService } from '../services/FileService';
+import PencilIcon from './icons/PencilIcon.vue';
+import EraserIcon from './icons/EraserIcon.vue';
 
 const props = defineProps<{
     block: Block;
@@ -36,8 +38,13 @@ const offset = ref({ x: 0, y: 0 });
 const lastPan = ref({ x: 0, y: 0 });
 const isSpacePressed = ref(false);
 
+// Tools
+type Tool = 'pencil' | 'eraser';
+const currentTool = ref<Tool>('pencil');
+
 // Config
 const LINE_WIDTH = 3;
+const ERASER_RADIUS = 10;
 
 // Initialize
 const handleKeydown = (e: KeyboardEvent) => {
@@ -290,12 +297,13 @@ const moveDrawing = (e: MouseEvent | TouchEvent) => {
     if (!isDrawing.value) return;
 
     const p = toVirtual(clientX, clientY);
-    currentStroke.value.push(p);
 
-    // Optimization: Draw only last segment? 
-    // For now simple redrawAll is safe for reasonable stroke counts.
-    // Ideally we draw just the new segment on top.
-    drawAll();
+    if (currentTool.value === 'eraser') {
+        eraseAt(p);
+    } else {
+        currentStroke.value.push(p);
+        drawAll();
+    }
 };
 
 const stopDrawing = () => {
@@ -307,13 +315,41 @@ const stopDrawing = () => {
     if (!isDrawing.value) return;
     isDrawing.value = false;
 
-    if (currentStroke.value.length > 0) {
+    if (currentTool.value === 'pencil' && currentStroke.value.length > 0) {
         // Simple smoothing
         const smoothed = smoothStroke(currentStroke.value);
         strokes.value.push(smoothed);
     }
     currentStroke.value = [];
     drawAll();
+};
+
+const eraseAt = (p: { x: number, y: number }) => {
+    const threshold = ERASER_RADIUS / scale.value; // Adjust threshold by scale
+    const thresholdSq = threshold * threshold;
+
+    // Filter out strokes that are close to point p
+    const initialCount = strokes.value.length;
+    strokes.value = strokes.value.filter(stroke => {
+        // Check if any point in stroke is close to p
+        // Optimization: Check bounding box first?
+        // Simple: Check distance to segments
+        for (let i = 0; i < stroke.length - 1; i++) {
+            const p1 = stroke[i];
+            const p2 = stroke[i + 1];
+            if (!p1 || !p2) continue;
+
+            const distSq = getSqSegDist(p, p1, p2);
+            if (distSq < thresholdSq) {
+                return false; // Remove stroke
+            }
+        }
+        return true;
+    });
+
+    if (strokes.value.length !== initialCount) {
+        drawAll();
+    }
 };
 
 const smoothStroke = (points: { x: number, y: number }[]) => {
@@ -327,21 +363,22 @@ const smoothStroke = (points: { x: number, y: number }[]) => {
     return simplify(points, 0.5);
 };
 
+// Helper for squared distance from point p to segment p1-p2
+const getSqSegDist = (p: { x: number, y: number }, p1: { x: number, y: number }, p2: { x: number, y: number }) => {
+    let x = p1.x, y = p1.y, dx = p2.x - x, dy = p2.y - y;
+    if (dx !== 0 || dy !== 0) {
+        const t = ((p.x - x) * dx + (p.y - y) * dy) / (dx * dx + dy * dy);
+        if (t > 1) { x = p2.x; y = p2.y; }
+        else if (t > 0) { x += dx * t; y += dy * t; }
+    }
+    dx = p.x - x; dy = p.y - y;
+    return dx * dx + dy * dy;
+};
+
 // RDP Algorithm (Simplified version of DrawingSection's)
 const simplify = (points: { x: number; y: number }[], tolerance: number) => {
     if (points.length < 3) return points;
     const sqTolerance = tolerance * tolerance;
-
-    const getSqSegDist = (p: { x: number, y: number }, p1: { x: number, y: number }, p2: { x: number, y: number }) => {
-        let x = p1.x, y = p1.y, dx = p2.x - x, dy = p2.y - y;
-        if (dx !== 0 || dy !== 0) {
-            const t = ((p.x - x) * dx + (p.y - y) * dy) / (dx * dx + dy * dy);
-            if (t > 1) { x = p2.x; y = p2.y; }
-            else if (t > 0) { x += dx * t; y += dy * t; }
-        }
-        dx = p.x - x; dy = p.y - y;
-        return dx * dx + dy * dy;
-    }
 
     const simplifyDP = (points: { x: number, y: number }[], first: number, last: number, sqTol: number, out: { x: number, y: number }[]) => {
         let maxSqDist = sqTol;
@@ -617,6 +654,18 @@ defineExpose({
         ref="containerRef">
         <!-- Toolbar -->
         <div class="absolute top-2 left-2 z-10 flex gap-2">
+            <div class="flex bg-white shadow rounded overflow-hidden mr-2">
+                <button @click="currentTool = 'pencil'" :class="{ 'bg-neutral-200': currentTool === 'pencil' }"
+                    class="p-1.5 hover:bg-neutral-100 text-neutral-700" title="Pencil">
+                    <PencilIcon class="size-4" />
+                </button>
+                <div class="w-px bg-neutral-200"></div>
+                <button @click="currentTool = 'eraser'" :class="{ 'bg-neutral-200': currentTool === 'eraser' }"
+                    class="p-1.5 hover:bg-neutral-100 text-neutral-700" title="Vector Eraser">
+                    <EraserIcon class="size-4" />
+                </button>
+            </div>
+
             <button @click="emit('cancel')"
                 class="px-3 py-1 bg-white shadow rounded text-sm hover:bg-neutral-50">Cancel</button>
             <button @click="save"
@@ -637,7 +686,8 @@ defineExpose({
                 class="absolute top-0 left-0 object-contain pointer-events-none" alt="Background" />
         </div>
 
-        <canvas ref="canvasRef" class="w-full h-full cursor-crosshair touch-none" @mousedown="startDrawing"
+        <canvas ref="canvasRef" class="w-full h-full touch-none"
+            :class="currentTool === 'eraser' ? 'cursor-cell' : 'cursor-crosshair'" @mousedown="startDrawing"
             @mousemove="moveDrawing" @mouseup="stopDrawing" @mouseleave="stopDrawing" @touchstart.prevent="startDrawing"
             @touchmove.prevent="moveDrawing" @touchend.prevent="stopDrawing" @wheel="handleWheel"></canvas>
     </div>
