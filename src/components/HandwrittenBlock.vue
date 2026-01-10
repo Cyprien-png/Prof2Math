@@ -148,11 +148,25 @@ const renderImages = async () => {
 
                 const fileHandle = await fileService.getFileHandleByPath(props.rootHandle, targetPath);
                 const file = await fileHandle.getFile();
-                const url = URL.createObjectURL(file);
-                objectUrls.value.push(url);
-                img.src = url;
+
+                if (file.name.toLowerCase().endsWith('.svg')) {
+                    // Inline SVG for reactive colors (files are trusted)
+                    const text = await file.text();
+                    const wrapper = document.createElement('div');
+                    // Ensure text color defaults for currentColor
+                    wrapper.className = 'w-full text-neutral-900 dark:text-neutral-100 inline-block';
+                    wrapper.innerHTML = text;
+
+                    // Replace img with wrapper
+                    img.replaceWith(wrapper);
+                } else {
+                    // Normal image handling
+                    const url = URL.createObjectURL(file);
+                    objectUrls.value.push(url);
+                    img.src = url;
+                }
             } catch (err) {
-                console.error('Failed to load image:', src, err);
+                console.error('Failed to load asset:', src, err);
             }
         }
     }
