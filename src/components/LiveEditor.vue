@@ -726,43 +726,7 @@ const convertBlockToTextual = async (index: number) => {
         // For now just console log
         console.log("Capturing block for OCR...");
 
-        const dataUrl = await (async () => {
-            // Clone the element to manipulate styles without affecting the DOM
-            const clone = element.cloneNode(true) as HTMLElement;
-
-            // Force Light Mode / Black Ink
-            clone.style.color = 'black';
-            clone.style.background = 'transparent';
-
-            // Remove any dark mode inversions from the clone
-            const invertedElements = clone.querySelectorAll('.dark\\:invert');
-            invertedElements.forEach(el => el.classList.remove('dark:invert'));
-
-            // Allow SVGs to inherit the black color (currentColor)
-            const svgs = clone.querySelectorAll('svg');
-            svgs.forEach(svg => {
-                svg.style.color = 'black';
-                svg.style.stroke = 'black'; // Explicitly set stroke for good measure
-            });
-
-            // Position off-screen
-            clone.style.position = 'absolute';
-            clone.style.top = '-9999px';
-            clone.style.left = '-9999px';
-            // Ensure width matches original to preserve layout
-            clone.style.width = `${element.clientWidth}px`;
-
-            document.body.appendChild(clone);
-
-            try {
-                return await toPng(clone, {
-                    backgroundColor: null, // Transparent background
-                    style: { visibility: 'visible' } // Ensure visibility
-                });
-            } finally {
-                document.body.removeChild(clone);
-            }
-        })();
+        const dataUrl = await toPng(element, { backgroundColor: 'white' });
 
         // 3. Get AI Model
         const model = aiService.getModel();
