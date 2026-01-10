@@ -344,7 +344,7 @@ const displayName = computed(() => {
             :class="[
                 isActive ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : (showMenu ? 'bg-neutral-200 dark:bg-neutral-800' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'),
                 isDragOver ? 'bg-blue-200 dark:bg-blue-800 rounded-none' : ''
-            ]" :style="{ paddingLeft: `${currentDepth * 12 + 8}px` }" draggable="true" @dragstart="onDragStart"
+            ]" :style="{ paddingLeft: `${currentDepth * 24 + 8}px` }" draggable="true" @dragstart="onDragStart"
             @dragenter="onDragEnter" @dragleave="onDragLeave" @dragover="onDragOver" @drop="onDrop"
             :data-drop-target-path="targetPath">
 
