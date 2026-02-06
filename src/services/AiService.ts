@@ -19,7 +19,7 @@ class AiService {
         } else if (provider === 'google') {
             const google = createGoogleGenerativeAI({ apiKey });
             // Using the specific preview model as requested/configured by user
-            return google('gemini-2.0-flash-exp');
+            return google('gemini-2.0-flash');
         } else if (provider === 'anthropic') {
             const anthropic = createAnthropic({ apiKey });
             return anthropic('claude-3-5-sonnet-20240620');
