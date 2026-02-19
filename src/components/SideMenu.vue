@@ -182,7 +182,8 @@ const closeRootMenu = () => {
         <!-- Menu Items -->
         <div class="flex-1 py-4 flex flex-col gap-1 px-2 overflow-y-auto">
             <template v-if="!isCollapsed">
-                <NoWorkspaceFound v-if="isRestoring" />
+                <NoWorkspaceFound v-if="isRestoring" :folder-name="rootHandle?.name"
+                    @restore="emit('restore-access')" />
 
                 <template v-else-if="rootHandle">
                     <FileTree v-if="fileTree && fileTree.length > 0" v-for="node in fileTree" :key="node.name"
