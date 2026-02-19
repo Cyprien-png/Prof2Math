@@ -184,8 +184,6 @@ const closeRootMenu = () => {
             <template v-if="!isCollapsed">
                 <NoWorkspaceFound v-if="isRestoring" />
 
-                <NoWorkspaceFound v-if="isRestoring" />
-
                 <template v-else-if="rootHandle">
                     <FileTree v-if="fileTree && fileTree.length > 0" v-for="node in fileTree" :key="node.name"
                         :node="node" :active-file-handle="activeFileHandle" :parent-handle="rootHandle || undefined"
