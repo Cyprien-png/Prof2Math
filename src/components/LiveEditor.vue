@@ -859,11 +859,15 @@ const handleSetRootDirectory = async (handle: FileSystemDirectoryHandle) => {
 };
 
 const handleRestoreAccess = async () => {
+    // Remove global listener if it exists (in case this was called via button or subsequent click)
+    window.removeEventListener('click', handleRestoreAccess);
+
     if (rootDirectoryHandle.value) {
         if (await fileService.verifyPermission(rootDirectoryHandle.value)) {
             const tree = await fileService.readDirectory(rootDirectoryHandle.value);
             restoreTreeState(tree);
             fileTree.value = tree;
+            isRestoringPermission.value = false;
         } else {
             isRestoringPermission.value = true;
         }
@@ -909,6 +913,8 @@ onMounted(async () => {
         } else {
             // Needs restoration
             isRestoringPermission.value = true;
+            // Add global click listener to auto-restore on first interaction
+            window.addEventListener('click', handleRestoreAccess, { once: true });
         }
     }
 });
